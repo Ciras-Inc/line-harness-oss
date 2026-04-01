@@ -253,6 +253,58 @@ async function handleEvent(
       }
     }
 
+    // 【管理者機能】リッチメニュー切り替え
+    if ((incomingText === '既存' || incomingText === '新規') && env.LINE_ADMIN_USER_ID) {
+      const isAdmin = lineUserId === env.LINE_ADMIN_USER_ID;
+
+      if (!isAdmin) {
+        // 管理者以外は無視（何も返信しない）
+        return;
+      }
+
+      const richMenuId = incomingText === '既存' ? env.RICH_MENU_EXISTING : env.RICH_MENU_NEW;
+
+      if (!richMenuId || richMenuId.includes('placeholder')) {
+        try {
+          await lineClient.replyMessage(event.replyToken, [
+            { type: 'text', text: 'リッチメニューIDが設定されていません。wrangler.tomlを確認してください。' },
+          ]);
+        } catch (err) {
+          console.error('Failed to reply for rich menu error', err);
+        }
+        return;
+      }
+
+      try {
+        // LINE Messaging APIでリッチメニューを割り当て
+        const response = await fetch(`https://api.line.me/v2/bot/user/${lineUserId}/richmenu/${richMenuId}`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${lineAccessToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`LINE API error: ${response.status} ${response.statusText}`);
+        }
+
+        await lineClient.replyMessage(event.replyToken, [
+          { type: 'text', text: `リッチメニューを「${incomingText}客用」に切り替えました。` },
+        ]);
+      } catch (err) {
+        console.error('Failed to set rich menu', err);
+        try {
+          await lineClient.replyMessage(event.replyToken, [
+            { type: 'text', text: 'リッチメニューの設定に失敗しました。' },
+          ]);
+        } catch (replyErr) {
+          console.error('Failed to reply for rich menu error', replyErr);
+        }
+      }
+      return;
+    }
+
     // Cross-account trigger: send message from another account via UUID
     if (incomingText === '体験を完了する' && lineAccountId) {
       try {

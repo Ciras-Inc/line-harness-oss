@@ -18,5 +18,11 @@ database_id = "214b6b6c-b028-4b10-9fe0-e1b6ecf0c1cc"
 binding = "IMAGES"
 bucket_name = "line-harness-images"
 
+[vars]
+# リッチメニュー切り替え機能の環境変数
+LINE_ADMIN_USER_ID = "YOUR_LINE_USER_ID_HERE"  # 管理者のLINE user_id（Uから始まる33文字）に置き換えてください
+RICH_MENU_NEW = "richmenu-new-placeholder"      # 新規客用リッチメニューID（Task #1で取得後に更新）
+RICH_MENU_EXISTING = "richmenu-existing-placeholder"  # 既存客用リッチメニューID（Task #1で取得後に更新）
+
 [triggers]
 crons = ["*/5 * * * *"]

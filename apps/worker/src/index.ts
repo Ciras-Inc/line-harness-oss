@@ -51,6 +51,9 @@ export type Env = {
     LINE_LOGIN_CHANNEL_SECRET: string;
     WORKER_URL: string;
     X_HARNESS_URL?: string;  // Optional: X Harness API URL for account linking
+    LINE_ADMIN_USER_ID?: string;  // 管理者のLINE user_id（リッチメニュー切替権限）
+    RICH_MENU_NEW?: string;  // 新規客用リッチメニューID
+    RICH_MENU_EXISTING?: string;  // 既存客用リッチメニューID
   };
   Variables: {
     staff: { id: string; name: string; role: 'owner' | 'admin' | 'staff' };

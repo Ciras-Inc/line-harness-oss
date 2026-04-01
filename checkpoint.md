@@ -1,5 +1,5 @@
 # LINE Harness Phase 1 実装進捗チェックポイント
-**最終更新**: 2026-04-01
+**最終更新**: 2026-04-01 16:15 JST
 
 ## プロジェクト概要
 Ciras株式会社のLINE公式アカウント（テストBot: @953mvanz / Channel ID: 2009662198）でマーケティングオートメーション構築中。
@@ -143,6 +143,67 @@ if (reservationState === 'step3') {
 **データベース**: D1（line-harness-test / 214b6b6c-b028-4b10-9fe0-e1b6ecf0c1cc）
 - スキーマ適用完了（schema.sql、migrations 003/005/006）
 - 初期データ投入完了（120行）
+- 初期データ検証完了（auto_replies 1件、scenarios 1件、scenario_steps 10件、scoring_rules 7件）
+
+**Workerデプロイ**: ✅ 完了
+- URL: https://line-harness.solitary-rain-3867.workers.dev
+- Version ID: 5333e0ce-8414-424b-8bf2-b60324ec4bdd
+- デプロイ日時: 2026-04-01 15:15 JST
+
+**Git commit**: ✅ 完了
+- コミットハッシュ: 0f2146b
+- メッセージ: feat: Ciras LINE Bot Phase 1 実装 — 打ち合わせ予約・条件分岐・初期データ
+- 変更ファイル: 5件（webhook.ts, step-delivery.ts, wrangler.toml, 007_ciras_initial_data.sql, checkpoint.md）
+
+### Task #2: wrangler.tomlに環境変数を追加 ✅
+**ファイル**: `apps/worker/wrangler.toml`
+
+**実装内容**:
+- `[vars]`セクションを新規作成
+- リッチメニュー切り替え機能用の環境変数を3つ追加:
+  - `LINE_ADMIN_USER_ID`: 管理者のLINE user_id（要置き換え）
+  - `RICH_MENU_NEW`: 新規客用リッチメニューID（プレースホルダー）
+  - `RICH_MENU_EXISTING`: 既存客用リッチメニューID（プレースホルダー）
+
+**次のステップ**:
+1. 管理者のLINE user_idを取得してLINE_ADMIN_USER_IDを更新
+2. Task #1でリッチメニュー作成後、RICH_MENU_NEWとRICH_MENU_EXISTINGを実際のIDに更新
+
+### Task #5: webhook.tsにリッチメニュー切り替えロジックを追加 ✅
+**ファイル**: `apps/worker/src/routes/webhook.ts`（L255付近に48行追加）
+
+**実装内容**:
+1. キーワード「既存」または「新規」を検知
+2. 管理者判定（`env.LINE_ADMIN_USER_ID`と一致するか）
+3. 管理者以外は無視（セキュリティ考慮）
+4. リッチメニューIDの確認（placeholderが含まれていたらエラー通知）
+5. LINE Messaging APIを呼び出してリッチメニューを割り当て
+   - エンドポイント: `POST https://api.line.me/v2/bot/user/{userId}/richmenu/{richMenuId}`
+6. 成功メッセージを返信（「リッチメニューを「○○客用」に切り替えました。」）
+
+**セキュリティ対策**:
+- 管理者以外が「既存」「新規」と送信しても無視（何も返信しない）
+- リッチメニューIDが未設定の場合はエラー通知
+
+### Task #7: 統合テスト（D1データ確認） ✅
+**実施日時**: 2026-04-01 16:00 JST
+
+**確認済みデータ**:
+1. **auto_replies**: 1件（「1分でわかるCiras」）✅
+2. **scenarios**: 1件（友だち追加オンボーディング）✅
+3. **scenario_steps**: 10件（条件分岐含む、link_clicked/link_not_clicked正常動作）✅
+4. **scoring_rules**: 7件（+1点〜+15点）✅
+5. **tags**: 4件（広告、SNS、名刺、セミナー会場）✅
+6. **tracked_links**: 2件（AIチェッカー、Webチェッカー）✅
+7. **conversion_points**: 3件（セミナー申込、問い合わせ、打ち合わせ予約）✅
+8. **templates**: 8件 ✅
+9. **entry_routes**: 4件（Google広告、SNS、名刺、セミナー会場）✅
+
+**Workerデプロイ（2回目）**: ✅ 完了
+- URL: https://line-harness.solitary-rain-3867.workers.dev
+- Version ID: 8dcc4849-26da-4424-8f11-134b81dc3517
+- デプロイ日時: 2026-04-01 16:10 JST
+- 変更内容: リッチメニュー切り替えロジック追加、環境変数追加
 
 ---
 
@@ -156,33 +217,12 @@ if (reservationState === 'step3') {
    - 新規客用メニュー
    - 既存客用メニュー
 2. MCPの`mcp__line-harness__create_rich_menu`で作成
-3. 作成されたrich_menu_idをメモ（環境変数で使用）
+3. 作成されたrich_menu_idをメモ
+4. wrangler.tomlの`RICH_MENU_NEW`と`RICH_MENU_EXISTING`を実際のIDに更新
+5. 管理者のLINE user_idを取得して`LINE_ADMIN_USER_ID`を更新
+6. Workerを再デプロイ
 
-### Task #2: wrangler.tomlに環境変数を追加
-**状態**: pending
-
-**追加する環境変数**:
-```toml
-[vars]
-LINE_ADMIN_USER_ID = "Uxxx..." # 管理者のLINE user_id（リッチメニュー切替権限）
-RICH_MENU_NEW = "richmenu-xxx" # 新規客用リッチメニューID（Task #1で取得）
-RICH_MENU_EXISTING = "richmenu-yyy" # 既存客用リッチメニューID（Task #1で取得）
-```
-
-### Task #5: webhook.tsにリッチメニュー切り替えロジックを追加
-**状態**: pending
-
-**実装箇所**: `apps/worker/src/routes/webhook.ts`（L255付近）
-
-**実装内容**:
-- 管理者（LINE_ADMIN_USER_ID）のみ実行可能
-- キーワード「既存」→ RICH_MENU_EXISTING を送信者に割り当て
-- キーワード「新規」→ RICH_MENU_NEW を送信者に割り当て
-- 内部でmanage-friends APIのset_rich_menuを呼び出し
-
-**想定コード量**: 約30行
-
-### Task #7: 統合テスト（友だち追加→シナリオ配信）
+### Task #7B: 統合テスト（LINEアプリでの手動テスト）
 **状態**: ready for testing
 
 **テスト項目**:
@@ -228,25 +268,49 @@ RICH_MENU_EXISTING = "richmenu-yyy" # 既存客用リッチメニューID（Task
 
 ## 次のセッションで最初にやるべきこと
 
-### オプションA: リッチメニュー画像がある場合
+### 🎯 最優先: LINEアプリでの統合テスト実施（Task #7B）
+
+**前提**: すべての実装完了、Workerデプロイ済み、D1データ確認済み
+
+#### ステップ1: 打ち合わせ予約フローをテスト（5分）
+1. LINEアプリでテストBot（@953mvanz）を開く
+2. 「打ち合わせ予約」と送信
+3. クイックリプライで所要時間選択 → 希望時期選択 → 相談内容入力
+4. 確認メッセージ（Flex）受信を確認
+5. D1でスコア+15が記録されているか確認:
+   ```bash
+   npx wrangler d1 execute line-harness-test --command "SELECT * FROM friend_scores ORDER BY created_at DESC LIMIT 1" --remote
+   ```
+
+#### ステップ2: 自動返信をテスト（2分）
+1. 「1分でわかるCiras」と送信
+2. カルーセル（4カード）受信を確認
+
+#### ステップ3: 友だち追加シナリオをテスト（3分）
+1. 新しいLINEアカウントでテストBotを友だち追加（または既存アカウントでブロック解除）
+2. ウェルカムメッセージ即時受信を確認
+3. D1でfriend_scenarios登録を確認:
+   ```bash
+   npx wrangler d1 execute line-harness-test --command "SELECT * FROM friend_scenarios ORDER BY created_at DESC LIMIT 1" --remote
+   ```
+
+### その後の選択肢
+
+#### オプションA: リッチメニュー画像がある場合
 1. **Task #1実行**: リッチメニュー2種を作成
-   - `mcp__line-harness__create_rich_menu`で新規客用・既存客用を作成
-   - rich_menu_idを2つメモ
-2. **Task #2実行**: wrangler.tomlに環境変数追加
-3. **Task #5実行**: webhook.tsにリッチメニュー切り替えロジック追加
-4. **Task #7実行**: 統合テスト
+2. wrangler.tomlの環境変数を実際のIDに更新
+3. 管理者のLINE user_idを取得して`LINE_ADMIN_USER_ID`を更新
+4. Workerを再デプロイ
+5. リッチメニュー切り替えテスト（「既存」「新規」と送信）
 
-### オプションB: リッチメニュー画像がない場合（推奨）
-1. **Task #7実行**: 統合テスト（部分的に実行可能）
-   - ✅ 打ち合わせ予約フロー完走テスト（Task #6完了）
-   - ✅ キーワード「1分でわかるCiras」→ カルーセル受信テスト
-   - ✅ 友だち追加 → ウェルカムメッセージ即時受信テスト
-   - ⏸️ リッチメニュー切り替えテスト（Task #5実装後）
-2. **Task #5実行**: リッチメニュー切り替えロジック（画像なしでもコード実装可能）
-3. リッチメニュー画像が揃ったらTask #1→#2を実行
+#### オプションB: リッチメニュー画像がない場合
+1. 統合テストの結果をまとめる
+2. リッチメニュー画像が揃ったらTask #1を実行
+3. 最終統合テスト
 
-### 推奨: オプションB → 統合テスト優先
-理由: Task #6（打ち合わせ予約フロー）が完了したため、主要機能のテストが可能。リッチメニュー関連以外のテストを先行実施し、動作確認を進める。
+### 📝 テスト結果の記録方法
+- checkpoint.mdの該当テスト項目に ✅ または ❌ を追記
+- エラーが発生した場合は詳細をメモ
 
 ---
 
@@ -289,15 +353,24 @@ mcp__line-harness__create_rich_menu({ name: '新規客用', areas: [...], imageD
 
 ## ファイル変更履歴
 
-### 変更したファイル
-1. `apps/worker/src/services/step-delivery.ts` - link_clicked/link_not_clicked条件追加（Task #4）
-2. `apps/worker/wrangler.toml` - database_name修正
-3. `packages/db/migrations/007_ciras_initial_data.sql` - 初期データSQL作成（Task #3）
-4. `apps/worker/src/routes/webhook.ts` - 打ち合わせ予約フロー追加（L307付近、約150行、Task #6）
+### 変更したファイル（Git commit済み: 0f2146b）
+1. `apps/worker/src/services/step-delivery.ts` - link_clicked/link_not_clicked条件追加（Task #4、約15行）
+2. `apps/worker/wrangler.toml` - database_name修正（line-harness → line-harness-test）
+3. `packages/db/migrations/007_ciras_initial_data.sql` - 初期データSQL作成（Task #3、120行）
+4. `apps/worker/src/routes/webhook.ts` - 打ち合わせ予約フロー追加（Task #6、L307付近、約150行）
+5. `checkpoint.md` - 進捗管理ドキュメント作成
+
+### 変更したファイル（未commit、今回のセッション）
+1. `apps/worker/wrangler.toml` - [vars]セクション追加、環境変数3つ追加（Task #2）
+2. `apps/worker/src/index.ts` - Env型定義に環境変数3つ追加（Task #2）
+3. `apps/worker/src/routes/webhook.ts` - リッチメニュー切り替えロジック追加（Task #5、L255付近、約48行）
+4. `checkpoint.md` - 進捗更新（Task #2, #5, #7完了）
+
+### その他作成したファイル
+1. `.claude/projects/.../memory/MEMORY.md` - 実装パターンメモ（クイックリプライ、条件分岐、D1操作）
 
 ### 次に変更するファイル（予定）
-1. `apps/worker/wrangler.toml` - 環境変数追加（Task #2）
-2. `apps/worker/src/routes/webhook.ts` - リッチメニュー切替（Task #5）
+1. `apps/worker/wrangler.toml` - 環境変数の実際の値に更新（Task #1完了後）
 
 ---
 
