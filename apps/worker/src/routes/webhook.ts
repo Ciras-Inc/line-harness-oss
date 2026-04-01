@@ -305,6 +305,162 @@ async function handleEvent(
       }
     }
 
+    // 打ち合わせ予約フロー（クイックリプライで3ステップ対話）
+    const friendMeta = await db.prepare('SELECT metadata FROM friends WHERE id = ?').bind(friend.id).first<{ metadata: string }>();
+    const metadata = JSON.parse(friendMeta?.metadata || '{}') as Record<string, unknown>;
+    const reservationState = metadata.reservation_state as string | undefined;
+
+    // ステップ1: 開始トリガー「打ち合わせ予約」
+    if (incomingText === '打ち合わせ予約' && !reservationState) {
+      try {
+        await lineClient.replyMessage(event.replyToken, [
+          {
+            type: 'text',
+            text: 'ご希望の所要時間を選択してください',
+            quickReply: {
+              items: [
+                { type: 'action', action: { type: 'message', label: '30分', text: '30分' } },
+                { type: 'action', action: { type: 'message', label: '1時間', text: '1時間' } },
+                { type: 'action', action: { type: 'message', label: '1.5時間', text: '1.5時間' } },
+              ],
+            },
+          },
+        ]);
+        metadata.reservation_state = 'step1';
+        await db.prepare('UPDATE friends SET metadata = ?, updated_at = ? WHERE id = ?')
+          .bind(JSON.stringify(metadata), jstNow(), friend.id).run();
+
+        // ログ記録（replyMessage = 無料）
+        const outLogId = crypto.randomUUID();
+        await db.prepare(
+          `INSERT INTO messages_log (id, friend_id, direction, message_type, content, broadcast_id, scenario_step_id, delivery_type, created_at)
+           VALUES (?, ?, 'outgoing', 'text', ?, NULL, NULL, 'reply', ?)`,
+        ).bind(outLogId, friend.id, 'ご希望の所要時間を選択してください', jstNow()).run();
+      } catch (err) {
+        console.error('Failed to start meeting reservation', err);
+      }
+      return;
+    }
+
+    // ステップ2: 所要時間を保存 → 希望時期を質問
+    if (reservationState === 'step1' && ['30分', '1時間', '1.5時間'].includes(incomingText)) {
+      try {
+        await lineClient.replyMessage(event.replyToken, [
+          {
+            type: 'text',
+            text: 'ご希望の時期を選択してください',
+            quickReply: {
+              items: [
+                { type: 'action', action: { type: 'message', label: '今週中', text: '今週中' } },
+                { type: 'action', action: { type: 'message', label: '来週', text: '来週' } },
+                { type: 'action', action: { type: 'message', label: '再来週', text: '再来週' } },
+                { type: 'action', action: { type: 'message', label: '未定', text: '未定' } },
+              ],
+            },
+          },
+        ]);
+        metadata.reservation_step1 = incomingText;
+        metadata.reservation_state = 'step2';
+        await db.prepare('UPDATE friends SET metadata = ?, updated_at = ? WHERE id = ?')
+          .bind(JSON.stringify(metadata), jstNow(), friend.id).run();
+
+        const outLogId = crypto.randomUUID();
+        await db.prepare(
+          `INSERT INTO messages_log (id, friend_id, direction, message_type, content, broadcast_id, scenario_step_id, delivery_type, created_at)
+           VALUES (?, ?, 'outgoing', 'text', ?, NULL, NULL, 'reply', ?)`,
+        ).bind(outLogId, friend.id, 'ご希望の時期を選択してください', jstNow()).run();
+      } catch (err) {
+        console.error('Failed to save meeting duration', err);
+      }
+      return;
+    }
+
+    // ステップ3: 希望時期を保存 → 相談内容を質問
+    if (reservationState === 'step2' && ['今週中', '来週', '再来週', '未定'].includes(incomingText)) {
+      try {
+        await lineClient.replyMessage(event.replyToken, [
+          {
+            type: 'text',
+            text: '相談内容を自由にご記入ください（例: AIチャットボット導入について相談したい）',
+          },
+        ]);
+        metadata.reservation_step2 = incomingText;
+        metadata.reservation_state = 'step3';
+        await db.prepare('UPDATE friends SET metadata = ?, updated_at = ? WHERE id = ?')
+          .bind(JSON.stringify(metadata), jstNow(), friend.id).run();
+
+        const outLogId = crypto.randomUUID();
+        await db.prepare(
+          `INSERT INTO messages_log (id, friend_id, direction, message_type, content, broadcast_id, scenario_step_id, delivery_type, created_at)
+           VALUES (?, ?, 'outgoing', 'text', ?, NULL, NULL, 'reply', ?)`,
+        ).bind(outLogId, friend.id, '相談内容を自由にご記入ください（例: AIチャットボット導入について相談したい）', jstNow()).run();
+      } catch (err) {
+        console.error('Failed to save meeting timing', err);
+      }
+      return;
+    }
+
+    // ステップ4: 相談内容を保存 → 完了確認 + meeting_bookedイベント発火
+    if (reservationState === 'step3' && incomingText.length > 0) {
+      try {
+        metadata.reservation_step3 = incomingText;
+        delete metadata.reservation_state; // ステートをクリア
+        await db.prepare('UPDATE friends SET metadata = ?, updated_at = ? WHERE id = ?')
+          .bind(JSON.stringify(metadata), jstNow(), friend.id).run();
+
+        // 確認メッセージ送信（Flex Message）
+        const confirmMessage = buildMessage('flex', JSON.stringify({
+          type: 'bubble',
+          body: {
+            type: 'box',
+            layout: 'vertical',
+            contents: [
+              { type: 'text', text: '打ち合わせ予約を承りました', size: 'lg', weight: 'bold', color: '#1e293b' },
+              { type: 'separator', margin: 'lg' },
+              { type: 'box', layout: 'vertical', margin: 'lg', spacing: 'sm', contents: [
+                { type: 'box', layout: 'baseline', spacing: 'sm', contents: [
+                  { type: 'text', text: '所要時間', size: 'sm', color: '#64748b', flex: 0, minWidth: '80px' },
+                  { type: 'text', text: metadata.reservation_step1 as string, size: 'sm', color: '#1e293b', wrap: true },
+                ]},
+                { type: 'box', layout: 'baseline', spacing: 'sm', contents: [
+                  { type: 'text', text: '希望時期', size: 'sm', color: '#64748b', flex: 0, minWidth: '80px' },
+                  { type: 'text', text: metadata.reservation_step2 as string, size: 'sm', color: '#1e293b', wrap: true },
+                ]},
+                { type: 'box', layout: 'baseline', spacing: 'sm', contents: [
+                  { type: 'text', text: '相談内容', size: 'sm', color: '#64748b', flex: 0, minWidth: '80px' },
+                  { type: 'text', text: incomingText, size: 'sm', color: '#1e293b', wrap: true },
+                ]},
+              ]},
+              { type: 'separator', margin: 'lg' },
+              { type: 'text', text: '担当者から1営業日以内にご連絡いたします。', size: 'xs', color: '#64748b', wrap: true, margin: 'lg' },
+            ],
+            paddingAll: '20px',
+          },
+        }));
+        await lineClient.replyMessage(event.replyToken, [confirmMessage]);
+
+        const outLogId = crypto.randomUUID();
+        await db.prepare(
+          `INSERT INTO messages_log (id, friend_id, direction, message_type, content, broadcast_id, scenario_step_id, delivery_type, created_at)
+           VALUES (?, ?, 'outgoing', 'flex', ?, NULL, NULL, 'reply', ?)`,
+        ).bind(outLogId, friend.id, '打ち合わせ予約完了確認', jstNow()).run();
+
+        // meeting_bookedイベント発火（スコア+15、CV記録）
+        await fireEvent(db, 'meeting_booked', {
+          friendId: friend.id,
+          eventData: {
+            duration: metadata.reservation_step1,
+            timing: metadata.reservation_step2,
+            content: incomingText,
+          },
+        }, lineAccessToken, lineAccountId);
+
+      } catch (err) {
+        console.error('Failed to complete meeting reservation', err);
+      }
+      return;
+    }
+
     // 自動返信チェック（このアカウントのルール + グローバルルールのみ）
     // NOTE: Auto-replies use replyMessage (free, no quota) instead of pushMessage
     // The replyToken is only valid for ~1 minute after the message event

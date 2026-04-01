@@ -243,6 +243,22 @@ async function evaluateCondition(
       const metadata = JSON.parse(friend?.metadata || '{}') as Record<string, unknown>;
       return metadata[key] !== value;
     }
+    case 'link_clicked': {
+      // URLクリック判定：link_clicksテーブルでfriend_id + tracked_link_idの存在確認
+      const click = await db
+        .prepare('SELECT 1 FROM link_clicks WHERE friend_id = ? AND tracked_link_id = ? LIMIT 1')
+        .bind(friendId, step.condition_value)
+        .first();
+      return !!click;
+    }
+    case 'link_not_clicked': {
+      // URLクリック判定（逆）：link_clicksテーブルでfriend_id + tracked_link_idが存在しない
+      const click = await db
+        .prepare('SELECT 1 FROM link_clicks WHERE friend_id = ? AND tracked_link_id = ? LIMIT 1')
+        .bind(friendId, step.condition_value)
+        .first();
+      return !click;
+    }
     default:
       return true;
   }
