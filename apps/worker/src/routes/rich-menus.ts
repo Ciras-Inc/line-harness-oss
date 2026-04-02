@@ -109,6 +109,27 @@ richMenus.delete('/api/friends/:friendId/rich-menu', async (c) => {
   }
 });
 
+// POST /api/rich-menus/:id/assign — LINE user_idを指定してリッチメニューを割り当て
+richMenus.post('/api/rich-menus/:id/assign', async (c) => {
+  try {
+    const richMenuId = c.req.param('id');
+    const body = await c.req.json<{ lineUserId: string }>();
+
+    if (!body.lineUserId) {
+      return c.json({ success: false, error: 'lineUserId is required' }, 400);
+    }
+
+    const lineClient = new LineClient(c.env.LINE_CHANNEL_ACCESS_TOKEN);
+    await lineClient.linkRichMenuToUser(body.lineUserId, richMenuId);
+
+    return c.json({ success: true, data: null });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('POST /api/rich-menus/:id/assign error:', message);
+    return c.json({ success: false, error: `Failed to assign rich menu: ${message}` }, 500);
+  }
+});
+
 export { richMenus };
 
 // POST /api/rich-menus/:id/image — upload rich menu image (accepts base64 body or binary)

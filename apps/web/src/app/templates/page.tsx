@@ -21,12 +21,15 @@ const messageTypeLabels: Record<string, string> = {
   flex: 'Flex',
 }
 
-interface CreateFormState {
+interface FormState {
   name: string
   category: string
   messageType: string
   messageContent: string
 }
+
+// 後方互換のため型エイリアスを保持
+type CreateFormState = FormState
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleString('ja-JP', {
@@ -71,6 +74,10 @@ export default function TemplatesPage() {
   })
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
+  const [editingTemplate, setEditingTemplate] = useState<Template | null>(null)
+  const [editForm, setEditForm] = useState<FormState>({ name: '', category: '', messageType: 'text', messageContent: '' })
+  const [editSaving, setEditSaving] = useState(false)
+  const [editError, setEditError] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -135,6 +142,44 @@ export default function TemplatesPage() {
     }
   }
 
+  const handleEditOpen = (template: Template) => {
+    setEditingTemplate(template)
+    setEditForm({
+      name: template.name,
+      category: template.category,
+      messageType: template.messageType,
+      messageContent: template.messageContent,
+    })
+    setEditError('')
+  }
+
+  const handleEditSave = async () => {
+    if (!editingTemplate) return
+    if (!editForm.name.trim()) { setEditError('テンプレート名を入力してください'); return }
+    if (!editForm.category.trim()) { setEditError('カテゴリを入力してください'); return }
+    if (!editForm.messageContent.trim()) { setEditError('メッセージ内容を入力してください'); return }
+    setEditSaving(true)
+    setEditError('')
+    try {
+      const res = await api.templates.update(editingTemplate.id, {
+        name: editForm.name,
+        category: editForm.category,
+        messageType: editForm.messageType,
+        messageContent: editForm.messageContent,
+      })
+      if (res.success) {
+        setEditingTemplate(null)
+        load()
+      } else {
+        setEditError(res.error)
+      }
+    } catch {
+      setEditError('保存に失敗しました')
+    } finally {
+      setEditSaving(false)
+    }
+  }
+
   const handleDelete = async (id: string) => {
     if (!confirm('このテンプレートを削除してもよいですか？')) return
     try {
@@ -159,6 +204,83 @@ export default function TemplatesPage() {
           </button>
         }
       />
+
+      {/* 編集モーダル */}
+      {editingTemplate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-lg">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <h2 className="text-sm font-semibold text-gray-800">テンプレートを編集</h2>
+              <button
+                onClick={() => setEditingTemplate(null)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="px-6 py-5 space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">テンプレート名 <span className="text-red-500">*</span></label>
+                <input
+                  type="text"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                  value={editForm.name}
+                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">カテゴリ <span className="text-red-500">*</span></label>
+                <input
+                  type="text"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                  value={editForm.category}
+                  onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">メッセージタイプ</label>
+                <select
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
+                  value={editForm.messageType}
+                  onChange={(e) => setEditForm({ ...editForm, messageType: e.target.value })}
+                >
+                  <option value="text">テキスト</option>
+                  <option value="image">画像</option>
+                  <option value="flex">Flex</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">メッセージ内容 <span className="text-red-500">*</span></label>
+                <textarea
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
+                  rows={5}
+                  value={editForm.messageContent}
+                  onChange={(e) => setEditForm({ ...editForm, messageContent: e.target.value })}
+                />
+              </div>
+              {editError && <p className="text-xs text-red-600">{editError}</p>}
+            </div>
+            <div className="flex gap-2 px-6 py-4 border-t border-gray-200">
+              <button
+                onClick={handleEditSave}
+                disabled={editSaving}
+                className="px-4 py-2 text-sm font-medium text-white rounded-lg disabled:opacity-50 transition-opacity"
+                style={{ backgroundColor: '#06C755' }}
+              >
+                {editSaving ? '保存中...' : '保存'}
+              </button>
+              <button
+                onClick={() => setEditingTemplate(null)}
+                className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                キャンセル
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Error */}
       {error && (
@@ -340,12 +462,20 @@ export default function TemplatesPage() {
 
                   {/* Actions */}
                   <td className="px-4 py-3 text-right">
-                    <button
-                      onClick={() => handleDelete(template.id)}
-                      className="px-3 py-1 text-xs font-medium text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-md transition-colors"
-                    >
-                      削除
-                    </button>
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => handleEditOpen(template)}
+                        className="px-3 py-1 text-xs font-medium text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors"
+                      >
+                        編集
+                      </button>
+                      <button
+                        onClick={() => handleDelete(template.id)}
+                        className="px-3 py-1 text-xs font-medium text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-md transition-colors"
+                      >
+                        削除
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

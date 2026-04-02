@@ -508,4 +508,51 @@ export const api = {
     regenerateKey: (id: string) =>
       fetchApi<ApiResponse<{ apiKey: string }>>(`/api/staff/${id}/regenerate-key`, { method: 'POST' }),
   },
+  richMenus: {
+    list: () =>
+      fetchApi<ApiResponse<RichMenu[]>>('/api/rich-menus'),
+    create: (data: RichMenuCreateBody) =>
+      fetchApi<ApiResponse<{ richMenuId: string }>>('/api/rich-menus', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    delete: (id: string) =>
+      fetchApi<ApiResponse<null>>(`/api/rich-menus/${id}`, { method: 'DELETE' }),
+    setDefault: (id: string) =>
+      fetchApi<ApiResponse<null>>(`/api/rich-menus/${id}/default`, { method: 'POST' }),
+    assign: (id: string, lineUserId: string) =>
+      fetchApi<ApiResponse<null>>(`/api/rich-menus/${id}/assign`, {
+        method: 'POST',
+        body: JSON.stringify({ lineUserId }),
+      }),
+    uploadImage: (id: string, imageBase64: string, contentType: 'image/png' | 'image/jpeg' = 'image/png') =>
+      fetchApi<ApiResponse<null>>(`/api/rich-menus/${id}/image`, {
+        method: 'POST',
+        body: JSON.stringify({ image: imageBase64, contentType }),
+      }),
+  },
+}
+
+// ─── リッチメニュー型定義 ───
+
+export interface RichMenuArea {
+  bounds: { x: number; y: number; width: number; height: number }
+  action: { type: 'uri' | 'message' | 'postback'; uri?: string; text?: string; data?: string; label?: string }
+}
+
+export interface RichMenu {
+  richMenuId: string
+  name: string
+  size: { width: number; height: number }
+  selected: boolean
+  chatBarText: string
+  areas: RichMenuArea[]
+}
+
+export interface RichMenuCreateBody {
+  name: string
+  chatBarText: string
+  size: { width: number; height: number }
+  selected: boolean
+  areas: RichMenuArea[]
 }
