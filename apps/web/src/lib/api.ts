@@ -30,6 +30,18 @@ import type { Broadcast } from '@line-crm/shared'
 /** Broadcast type from API (now camelCase after worker serialization) */
 export type ApiBroadcast = Broadcast
 
+export type BroadcastInsight = {
+  broadcastId?: string
+  delivered: number | null
+  uniqueImpression: number | null
+  uniqueClick: number | null
+  uniqueMediaPlayed: number | null
+  openRate: number | null
+  clickRate: number | null
+  status?: string
+  fetchedAt?: string | null
+}
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL
 if (!API_URL) {
   throw new Error(
@@ -187,6 +199,10 @@ export const api = {
       fetchApi<ApiResponse<null>>(`/api/broadcasts/${id}`, { method: 'DELETE' }),
     send: (id: string) =>
       fetchApi<ApiResponse<ApiBroadcast>>(`/api/broadcasts/${id}/send`, { method: 'POST' }),
+    getInsight: (id: string) =>
+      fetchApi<ApiResponse<BroadcastInsight | null>>(`/api/broadcasts/${id}/insight`),
+    fetchInsight: (id: string) =>
+      fetchApi<ApiResponse<BroadcastInsight>>(`/api/broadcasts/${id}/fetch-insight`, { method: 'POST' }),
   },
 
   // ── Round 2 APIs ─────────────────────────────────────────────────────────
@@ -486,7 +502,103 @@ export const api = {
     getMigration: (migrationId: string) =>
       fetchApi<ApiResponse<AccountMigration>>(`/api/accounts/migrations/${migrationId}`),
   },
-  staff: {
+  forms: {
+    list: () =>
+      fetchApi<ApiResponse<unknown[]>>('/api/forms'),
+    get: (id: string) =>
+      fetchApi<ApiResponse<unknown>>(`/api/forms/${id}`),
+    create: (data: Record<string, unknown>) =>
+      fetchApi<ApiResponse<unknown>>('/api/forms', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    update: (id: string, data: Record<string, unknown>) =>
+      fetchApi<ApiResponse<unknown>>(`/api/forms/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+    delete: (id: string) =>
+      fetchApi<ApiResponse<null>>(`/api/forms/${id}`, { method: 'DELETE' }),
+    submissions: (formId: string) =>
+      fetchApi<ApiResponse<unknown[]>>(`/api/forms/${formId}/submissions`),
+  },
+  richMenus: {
+    list: (accountId?: string) =>
+      fetchApi<ApiResponse<unknown[]>>(`/api/rich-menus${accountId ? `?accountId=${accountId}` : ''}`),
+    create: (data: Record<string, unknown>, accountId?: string) =>
+      fetchApi<ApiResponse<unknown>>(`/api/rich-menus${accountId ? `?accountId=${accountId}` : ''}`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    delete: (id: string, accountId?: string) =>
+      fetchApi<ApiResponse<null>>(`/api/rich-menus/${id}${accountId ? `?accountId=${accountId}` : ''}`, { method: 'DELETE' }),
+    setDefault: (id: string, accountId?: string) =>
+      fetchApi<ApiResponse<null>>(`/api/rich-menus/${id}/default${accountId ? `?accountId=${accountId}` : ''}`, { method: 'POST' }),
+    uploadImage: (id: string, file: File, accountId?: string) => {
+      const formData = new FormData()
+      formData.append('image', file)
+      return fetchApi<ApiResponse<null>>(`/api/rich-menus/${id}/image${accountId ? `?accountId=${accountId}` : ''}`, {
+        method: 'POST',
+        body: formData,
+        headers: {},
+      })
+    },
+  },
+  autoReplies: {
+    list: (accountId?: string) =>
+      fetchApi<ApiResponse<unknown[]>>(`/api/auto-replies${accountId ? `?accountId=${accountId}` : ''}`),
+    get: (id: string) =>
+      fetchApi<ApiResponse<unknown>>(`/api/auto-replies/${id}`),
+    create: (data: Record<string, unknown>) =>
+      fetchApi<ApiResponse<unknown>>('/api/auto-replies', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    update: (id: string, data: Record<string, unknown>) =>
+      fetchApi<ApiResponse<unknown>>(`/api/auto-replies/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+    delete: (id: string) =>
+      fetchApi<ApiResponse<null>>(`/api/auto-replies/${id}`, { method: 'DELETE' }),
+  },
+  adPlatforms: {
+    list: () =>
+      fetchApi<ApiResponse<unknown[]>>('/api/ad-platforms'),
+    create: (data: Record<string, unknown>) =>
+      fetchApi<ApiResponse<unknown>>('/api/ad-platforms', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    update: (id: string, data: Record<string, unknown>) =>
+      fetchApi<ApiResponse<unknown>>(`/api/ad-platforms/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+    delete: (id: string) =>
+      fetchApi<ApiResponse<null>>(`/api/ad-platforms/${id}`, { method: 'DELETE' }),
+    logs: (id: string, limit?: number) =>
+      fetchApi<ApiResponse<unknown[]>>(`/api/ad-platforms/${id}/logs${limit ? `?limit=${limit}` : ''}`),
+    test: (id: string) =>
+      fetchApi<ApiResponse<unknown>>(`/api/ad-platforms/${id}/test`, { method: 'POST' }),
+  },
+  trafficPools: {
+    list: () =>
+      fetchApi<ApiResponse<unknown[]>>('/api/traffic-pools'),
+    create: (data: Record<string, unknown>) =>
+      fetchApi<ApiResponse<unknown>>('/api/traffic-pools', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    update: (id: string, data: Record<string, unknown>) =>
+      fetchApi<ApiResponse<unknown>>(`/api/traffic-pools/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+    delete: (id: string) =>
+      fetchApi<ApiResponse<null>>(`/api/traffic-pools/${id}`, { method: 'DELETE' }),
+  },
+staff: {
     list: () =>
       fetchApi<ApiResponse<StaffMember[]>>('/api/staff'),
     get: (id: string) =>
