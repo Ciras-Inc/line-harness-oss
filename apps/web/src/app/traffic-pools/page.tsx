@@ -52,7 +52,7 @@ export default function TrafficPoolsPage() {
         api.trafficPools.list(),
         api.lineAccounts.list(),
       ])
-      if (poolsRes.status === 'fulfilled' && poolsRes.value.success) setPools(poolsRes.value.data)
+      if (poolsRes.status === 'fulfilled' && poolsRes.value.success) setPools(poolsRes.value.data as TrafficPool[])
       if (accountsRes.status === 'fulfilled' && accountsRes.value.success) {
         setAccounts(accountsRes.value.data as unknown as LineAccount[])
       }

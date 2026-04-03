@@ -504,58 +504,36 @@ export const api = {
   },
   forms: {
     list: () =>
-      fetchApi<ApiResponse<unknown[]>>('/api/forms'),
+      fetchApi<ApiResponse<ApiFormRecord[]>>('/api/forms'),
     get: (id: string) =>
-      fetchApi<ApiResponse<unknown>>(`/api/forms/${id}`),
+      fetchApi<ApiResponse<ApiFormRecord>>(`/api/forms/${id}`),
     create: (data: Record<string, unknown>) =>
-      fetchApi<ApiResponse<unknown>>('/api/forms', {
+      fetchApi<ApiResponse<ApiFormRecord>>('/api/forms', {
         method: 'POST',
         body: JSON.stringify(data),
       }),
     update: (id: string, data: Record<string, unknown>) =>
-      fetchApi<ApiResponse<unknown>>(`/api/forms/${id}`, {
+      fetchApi<ApiResponse<ApiFormRecord>>(`/api/forms/${id}`, {
         method: 'PATCH',
         body: JSON.stringify(data),
       }),
     delete: (id: string) =>
       fetchApi<ApiResponse<null>>(`/api/forms/${id}`, { method: 'DELETE' }),
     submissions: (formId: string) =>
-      fetchApi<ApiResponse<unknown[]>>(`/api/forms/${formId}/submissions`),
-  },
-  richMenus: {
-    list: (accountId?: string) =>
-      fetchApi<ApiResponse<unknown[]>>(`/api/rich-menus${accountId ? `?accountId=${accountId}` : ''}`),
-    create: (data: Record<string, unknown>, accountId?: string) =>
-      fetchApi<ApiResponse<unknown>>(`/api/rich-menus${accountId ? `?accountId=${accountId}` : ''}`, {
-        method: 'POST',
-        body: JSON.stringify(data),
-      }),
-    delete: (id: string, accountId?: string) =>
-      fetchApi<ApiResponse<null>>(`/api/rich-menus/${id}${accountId ? `?accountId=${accountId}` : ''}`, { method: 'DELETE' }),
-    setDefault: (id: string, accountId?: string) =>
-      fetchApi<ApiResponse<null>>(`/api/rich-menus/${id}/default${accountId ? `?accountId=${accountId}` : ''}`, { method: 'POST' }),
-    uploadImage: (id: string, file: File, accountId?: string) => {
-      const formData = new FormData()
-      formData.append('image', file)
-      return fetchApi<ApiResponse<null>>(`/api/rich-menus/${id}/image${accountId ? `?accountId=${accountId}` : ''}`, {
-        method: 'POST',
-        body: formData,
-        headers: {},
-      })
-    },
+      fetchApi<ApiResponse<Record<string, unknown>[]>>(`/api/forms/${formId}/submissions`),
   },
   autoReplies: {
     list: (accountId?: string) =>
-      fetchApi<ApiResponse<unknown[]>>(`/api/auto-replies${accountId ? `?accountId=${accountId}` : ''}`),
+      fetchApi<ApiResponse<ApiAutoReplyRecord[]>>(`/api/auto-replies${accountId ? `?accountId=${accountId}` : ''}`),
     get: (id: string) =>
-      fetchApi<ApiResponse<unknown>>(`/api/auto-replies/${id}`),
+      fetchApi<ApiResponse<ApiAutoReplyRecord>>(`/api/auto-replies/${id}`),
     create: (data: Record<string, unknown>) =>
-      fetchApi<ApiResponse<unknown>>('/api/auto-replies', {
+      fetchApi<ApiResponse<ApiAutoReplyRecord>>('/api/auto-replies', {
         method: 'POST',
         body: JSON.stringify(data),
       }),
     update: (id: string, data: Record<string, unknown>) =>
-      fetchApi<ApiResponse<unknown>>(`/api/auto-replies/${id}`, {
+      fetchApi<ApiResponse<ApiAutoReplyRecord>>(`/api/auto-replies/${id}`, {
         method: 'PATCH',
         body: JSON.stringify(data),
       }),
@@ -564,34 +542,34 @@ export const api = {
   },
   adPlatforms: {
     list: () =>
-      fetchApi<ApiResponse<unknown[]>>('/api/ad-platforms'),
+      fetchApi<ApiResponse<ApiAdPlatformRecord[]>>('/api/ad-platforms'),
     create: (data: Record<string, unknown>) =>
-      fetchApi<ApiResponse<unknown>>('/api/ad-platforms', {
+      fetchApi<ApiResponse<ApiAdPlatformRecord>>('/api/ad-platforms', {
         method: 'POST',
         body: JSON.stringify(data),
       }),
     update: (id: string, data: Record<string, unknown>) =>
-      fetchApi<ApiResponse<unknown>>(`/api/ad-platforms/${id}`, {
+      fetchApi<ApiResponse<ApiAdPlatformRecord>>(`/api/ad-platforms/${id}`, {
         method: 'PATCH',
         body: JSON.stringify(data),
       }),
     delete: (id: string) =>
       fetchApi<ApiResponse<null>>(`/api/ad-platforms/${id}`, { method: 'DELETE' }),
     logs: (id: string, limit?: number) =>
-      fetchApi<ApiResponse<unknown[]>>(`/api/ad-platforms/${id}/logs${limit ? `?limit=${limit}` : ''}`),
+      fetchApi<ApiResponse<ApiConversionLogRecord[]>>(`/api/ad-platforms/${id}/logs${limit ? `?limit=${limit}` : ''}`),
     test: (id: string) =>
-      fetchApi<ApiResponse<unknown>>(`/api/ad-platforms/${id}/test`, { method: 'POST' }),
+      fetchApi<ApiResponse<Record<string, unknown>>>(`/api/ad-platforms/${id}/test`, { method: 'POST' }),
   },
   trafficPools: {
     list: () =>
-      fetchApi<ApiResponse<unknown[]>>('/api/traffic-pools'),
+      fetchApi<ApiResponse<ApiTrafficPoolRecord[]>>('/api/traffic-pools'),
     create: (data: Record<string, unknown>) =>
-      fetchApi<ApiResponse<unknown>>('/api/traffic-pools', {
+      fetchApi<ApiResponse<ApiTrafficPoolRecord>>('/api/traffic-pools', {
         method: 'POST',
         body: JSON.stringify(data),
       }),
     update: (id: string, data: Record<string, unknown>) =>
-      fetchApi<ApiResponse<unknown>>(`/api/traffic-pools/${id}`, {
+      fetchApi<ApiResponse<ApiTrafficPoolRecord>>(`/api/traffic-pools/${id}`, {
         method: 'PATCH',
         body: JSON.stringify(data),
       }),
@@ -621,17 +599,17 @@ staff: {
       fetchApi<ApiResponse<{ apiKey: string }>>(`/api/staff/${id}/regenerate-key`, { method: 'POST' }),
   },
   richMenus: {
-    list: () =>
-      fetchApi<ApiResponse<RichMenu[]>>('/api/rich-menus'),
-    create: (data: RichMenuCreateBody) =>
-      fetchApi<ApiResponse<{ richMenuId: string }>>('/api/rich-menus', {
+    list: (accountId?: string) =>
+      fetchApi<ApiResponse<RichMenu[]>>(`/api/rich-menus${accountId ? `?accountId=${accountId}` : ''}`),
+    create: (data: Record<string, unknown>, accountId?: string) =>
+      fetchApi<ApiResponse<{ richMenuId: string }>>(`/api/rich-menus${accountId ? `?accountId=${accountId}` : ''}`, {
         method: 'POST',
         body: JSON.stringify(data),
       }),
-    delete: (id: string) =>
-      fetchApi<ApiResponse<null>>(`/api/rich-menus/${id}`, { method: 'DELETE' }),
-    setDefault: (id: string) =>
-      fetchApi<ApiResponse<null>>(`/api/rich-menus/${id}/default`, { method: 'POST' }),
+    delete: (id: string, accountId?: string) =>
+      fetchApi<ApiResponse<null>>(`/api/rich-menus/${id}${accountId ? `?accountId=${accountId}` : ''}`, { method: 'DELETE' }),
+    setDefault: (id: string, accountId?: string) =>
+      fetchApi<ApiResponse<null>>(`/api/rich-menus/${id}/default${accountId ? `?accountId=${accountId}` : ''}`, { method: 'POST' }),
     assign: (id: string, lineUserId: string) =>
       fetchApi<ApiResponse<null>>(`/api/rich-menus/${id}/assign`, {
         method: 'POST',
@@ -667,4 +645,64 @@ export interface RichMenuCreateBody {
   size: { width: number; height: number }
   selected: boolean
   areas: RichMenuArea[]
+}
+
+// ─── 新規ページ用型定義 ───
+
+export interface ApiFormRecord {
+  id: string
+  name: string
+  description: string | null
+  fields: { name: string; label: string; type: string; required?: boolean }[]
+  onSubmitTagId: string | null
+  onSubmitScenarioId: string | null
+  saveToMetadata: boolean
+  isActive: boolean
+  submitCount: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ApiAutoReplyRecord {
+  id: string
+  keyword: string
+  matchType: string
+  responseType: string
+  responseContent: string
+  lineAccountId: string | null
+  isActive: boolean
+  createdAt: string
+}
+
+export interface ApiAdPlatformRecord {
+  id: string
+  name: string
+  displayName: string | null
+  config: Record<string, unknown>
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ApiConversionLogRecord {
+  id: string
+  adPlatformId: string
+  friendId: string | null
+  eventName: string
+  clickId: string | null
+  status: string
+  errorMessage: string | null
+  createdAt: string
+}
+
+export interface ApiTrafficPoolRecord {
+  id: string
+  slug: string
+  name: string
+  activeAccountId: string
+  accountName: string | null
+  liffId: string | null
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
 }

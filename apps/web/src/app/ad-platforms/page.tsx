@@ -65,7 +65,7 @@ export default function AdPlatformsPage() {
     setLoading(true); setError('')
     try {
       const res = await api.adPlatforms.list()
-      if (res.success) setPlatforms(res.data)
+      if (res.success) setPlatforms(res.data as AdPlatform[])
     } catch {
       setError('広告プラットフォームの読み込みに失敗しました')
     } finally { setLoading(false) }
@@ -104,7 +104,7 @@ export default function AdPlatformsPage() {
     if (selectedLogs?.id === id) { setSelectedLogs(null); return }
     try {
       const res = await api.adPlatforms.logs(id, 20)
-      if (res.success) setSelectedLogs({ id, logs: res.data })
+      if (res.success) setSelectedLogs({ id, logs: res.data as ConversionLog[] })
     } catch { setError('ログの読み込みに失敗しました') }
   }
 

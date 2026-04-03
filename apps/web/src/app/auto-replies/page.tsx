@@ -44,7 +44,7 @@ export default function AutoRepliesPage() {
     setLoading(true); setError('')
     try {
       const res = await api.autoReplies.list(selectedAccountId || undefined)
-      if (res.success) setReplies(res.data)
+      if (res.success) setReplies(res.data as AutoReply[])
     } catch {
       setError('自動返信ルールの読み込みに失敗しました')
     } finally { setLoading(false) }
