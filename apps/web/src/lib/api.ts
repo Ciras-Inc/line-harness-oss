@@ -598,9 +598,23 @@ export const api = {
     delete: (id: string) =>
       fetchApi<ApiResponse<null>>(`/api/traffic-pools/${id}`, { method: 'DELETE' }),
   },
-  lineAccounts: {
+lineAccounts: {
     list: () =>
       fetchApi<ApiResponse<unknown[]>>('/api/line-accounts'),
+    get: (id: string) =>
+      fetchApi<ApiResponse<unknown>>(`/api/line-accounts/${id}`),
+    create: (data: Record<string, unknown>) =>
+      fetchApi<ApiResponse<unknown>>('/api/line-accounts', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    update: (id: string, data: Record<string, unknown>) =>
+      fetchApi<ApiResponse<unknown>>(`/api/line-accounts/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+    delete: (id: string) =>
+      fetchApi<ApiResponse<null>>(`/api/line-accounts/${id}`, { method: 'DELETE' }),
   },
   staff: {
     list: () =>
