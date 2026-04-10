@@ -13,3 +13,15 @@ dist/
 .env.staging
 apps/web/out/
 apps/worker/dist/
+
+# Claude Code
+quality_reports/session_snapshots/
+CLAUDE.md.bak
+.claude/settings.local.json
+
+# ローカル専用ファイル
+MEMORY.md
+richmenu-existing.png
+richmenu-new.png
+apps/web/tsconfig.tsbuildinfo
+.npmrc
