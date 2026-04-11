@@ -1,9 +1,16 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import Header from '@/components/layout/header'
 import { api } from '@/lib/api'
+import { useAccount } from '@/contexts/account-context'
+import { PageHeader } from '@/components/ui/page-header'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { LoadingState } from '@/components/ui/loading-state'
+import { EmptyState } from '@/components/ui/empty-state'
 import CcPromptButton from '@/components/cc-prompt-button'
+import { Target } from 'lucide-react'
 
 interface ScoringRule {
   id: string
@@ -40,7 +47,11 @@ const ccPrompts = [
   },
 ]
 
+const inputClass =
+  'w-full border border-border rounded-lg px-3 py-2 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring'
+
 export default function ScoringPage() {
+  const { selectedAccountId } = useAccount()
   const [rules, setRules] = useState<ScoringRule[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -52,6 +63,7 @@ export default function ScoringPage() {
   })
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
 
   const loadRules = useCallback(async () => {
     setLoading(true)
@@ -68,7 +80,7 @@ export default function ScoringPage() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [selectedAccountId])
 
   useEffect(() => {
     loadRules()
@@ -119,7 +131,6 @@ export default function ScoringPage() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('このスコアリングルールを削除しますか？')) return
     try {
       await api.scoring.deleteRule(id)
       loadRules()
@@ -132,158 +143,166 @@ export default function ScoringPage() {
   const activeRules = rules.filter((r) => r.isActive).length
 
   return (
-    <div>
-      <Header
+    <div className="py-6">
+      <PageHeader
         title="スコアリングルール"
-        action={
-          <button
-            onClick={() => setShowCreate(true)}
-            className="px-4 py-2 text-sm font-medium text-white rounded-lg transition-opacity hover:opacity-90"
-            style={{ backgroundColor: '#06C755' }}
-          >
-            + 新規ルール
-          </button>
-        }
+        description="イベントトリガーによるスコア付与ルール"
+        action={<Button onClick={() => setShowCreate(true)}>+ 新規ルール</Button>}
       />
 
-      {/* Summary stats */}
       {!loading && (
         <div className="grid grid-cols-2 gap-4 mb-6">
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
-            <p className="text-xs text-gray-500">ルール総数</p>
-            <p className="text-2xl font-bold text-gray-900">{totalRules}</p>
+          <div className="bg-card rounded-lg border border-border p-4">
+            <p className="text-xs text-muted-foreground">ルール総数</p>
+            <p className="text-2xl font-bold text-foreground">{totalRules}</p>
           </div>
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
-            <p className="text-xs text-gray-500">有効なルール</p>
-            <p className="text-2xl font-bold" style={{ color: '#06C755' }}>{activeRules}</p>
+          <div className="bg-card rounded-lg border border-border p-4">
+            <p className="text-xs text-muted-foreground">有効なルール</p>
+            <p className="text-2xl font-bold text-primary">{activeRules}</p>
           </div>
         </div>
       )}
 
-      {/* Error */}
       {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+        <div className="mb-4 p-4 bg-destructive/10 border border-destructive/20 rounded-md text-destructive text-sm">
           {error}
         </div>
       )}
 
-      {/* Create form */}
       {showCreate && (
-        <div className="mb-6 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h2 className="text-sm font-semibold text-gray-800 mb-4">新規スコアリングルールを作成</h2>
+        <div className="mb-6 rounded-md border border-border bg-card p-6">
+          <h2 className="text-sm font-semibold text-foreground mb-4">新規スコアリングルールを作成</h2>
           <div className="space-y-4 max-w-lg">
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">ルール名 <span className="text-red-500">*</span></label>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">
+                ルール名 <span className="text-destructive">*</span>
+              </label>
               <input
                 type="text"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                className={inputClass}
                 placeholder="例: メッセージ開封"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">イベントタイプ <span className="text-red-500">*</span></label>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">
+                イベントタイプ <span className="text-destructive">*</span>
+              </label>
               <input
                 type="text"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                className={inputClass}
                 placeholder="例: message_open, url_click, friend_add"
                 value={form.eventType}
                 onChange={(e) => setForm({ ...form, eventType: e.target.value })}
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">スコア値 <span className="text-red-500">*</span></label>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">
+                スコア値 <span className="text-destructive">*</span>
+              </label>
               <input
                 type="number"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                className={inputClass}
                 placeholder="例: 10 (正の値で加算、負の値で減算)"
                 value={form.scoreValue}
                 onChange={(e) => setForm({ ...form, scoreValue: e.target.value })}
               />
             </div>
 
-            {formError && <p className="text-xs text-red-600">{formError}</p>}
+            {formError && <p className="text-xs text-destructive">{formError}</p>}
 
             <div className="flex gap-2">
-              <button
-                onClick={handleCreate}
-                disabled={saving}
-                className="px-4 py-2 text-sm font-medium text-white rounded-lg disabled:opacity-50 transition-opacity"
-                style={{ backgroundColor: '#06C755' }}
-              >
+              <Button onClick={handleCreate} disabled={saving}>
                 {saving ? '作成中...' : '作成'}
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="outline"
                 onClick={() => { setShowCreate(false); setFormError('') }}
-                className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
               >
                 キャンセル
-              </button>
+              </Button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Loading skeleton */}
       {loading ? (
-        <div className="bg-white rounded-lg border border-gray-200 p-8 text-center text-gray-400">読み込み中...</div>
-      ) : rules.length === 0 ? (
-        <div className="bg-white rounded-lg border border-gray-200 p-8 text-center text-gray-400">スコアリングルールがまだありません</div>
+        <LoadingState rows={3} columns={5} />
+      ) : rules.length === 0 && !showCreate ? (
+        <EmptyState
+          icon={<Target size={32} />}
+          title="スコアリングルールがありません"
+          description="「新規ルール」から最初のルールを作成してください"
+          action={<Button onClick={() => setShowCreate(true)}>新規ルール</Button>}
+        />
       ) : (
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <div className="bg-card rounded-lg border border-border overflow-hidden">
           <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px]">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ルール名</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">イベントタイプ</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">スコア値</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ステータス</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">操作</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {rules.map((rule) => (
-                <tr key={rule.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-sm font-medium text-gray-900">{rule.name}</td>
-                  <td className="px-4 py-3">
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">{rule.eventType}</span>
-                  </td>
-                  <td className="px-4 py-3 text-sm font-semibold">
-                    <span style={{ color: rule.scoreValue >= 0 ? '#06C755' : '#EF4444' }}>
-                      {rule.scoreValue >= 0 ? `+${rule.scoreValue}` : rule.scoreValue}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <button
-                      onClick={() => handleToggleActive(rule.id, rule.isActive)}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                        rule.isActive ? 'bg-green-500' : 'bg-gray-300'
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          rule.isActive ? 'translate-x-6' : 'translate-x-1'
-                        }`}
-                      />
-                    </button>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <button
-                      onClick={() => handleDelete(rule.id)}
-                      className="text-red-500 hover:text-red-700 text-sm"
-                    >
-                      削除
-                    </button>
-                  </td>
+            <table className="w-full min-w-[640px]">
+              <thead className="bg-muted/50 border-b border-border">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">ルール名</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">イベントタイプ</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">スコア値</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">ステータス</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase">操作</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {rules.map((rule) => (
+                  <tr key={rule.id} className="hover:bg-accent/50">
+                    <td className="px-4 py-3 text-sm font-medium text-foreground">{rule.name}</td>
+                    <td className="px-4 py-3">
+                      <Badge variant="outline">{rule.eventType}</Badge>
+                    </td>
+                    <td className="px-4 py-3 text-sm font-semibold">
+                      <span className={rule.scoreValue >= 0 ? 'text-primary' : 'text-destructive'}>
+                        {rule.scoreValue >= 0 ? `+${rule.scoreValue}` : rule.scoreValue}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <button
+                        onClick={() => handleToggleActive(rule.id, rule.isActive)}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                          rule.isActive ? 'bg-primary' : 'bg-muted'
+                        }`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            rule.isActive ? 'translate-x-6' : 'translate-x-1'
+                          }`}
+                        />
+                      </button>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        onClick={() => setConfirmDelete(rule.id)}
+                        className="text-destructive hover:text-destructive/80 text-sm"
+                      >
+                        削除
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setConfirmDelete(null)
+        }}
+        title="スコアリングルールを削除しますか？"
+        description="この操作は元に戻せません。"
+        confirmLabel="削除する"
+        variant="destructive"
+        onConfirm={() => confirmDelete && handleDelete(confirmDelete)}
+      />
+
       <CcPromptButton prompts={ccPrompts} />
     </div>
   )

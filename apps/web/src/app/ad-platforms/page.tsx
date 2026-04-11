@@ -2,7 +2,13 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { api } from '@/lib/api'
-import Header from '@/components/layout/header'
+import { PageHeader } from '@/components/ui/page-header'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { LoadingState } from '@/components/ui/loading-state'
+import { EmptyState } from '@/components/ui/empty-state'
+import { MonitorDot } from 'lucide-react'
 
 interface AdPlatform {
   id: string
@@ -51,6 +57,9 @@ const initialForm: CreateFormState = {
   configJson: '{\n  "pixelId": "",\n  "accessToken": ""\n}',
 }
 
+const inputClass =
+  'w-full border border-border rounded-lg px-3 py-2 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring'
+
 export default function AdPlatformsPage() {
   const [platforms, setPlatforms] = useState<AdPlatform[]>([])
   const [loading, setLoading] = useState(true)
@@ -60,6 +69,7 @@ export default function AdPlatformsPage() {
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
   const [selectedLogs, setSelectedLogs] = useState<{ id: string; logs: ConversionLog[] } | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
 
   const loadPlatforms = useCallback(async () => {
     setLoading(true); setError('')
@@ -95,7 +105,6 @@ export default function AdPlatformsPage() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('この広告プラットフォームを削除してもよいですか？')) return
     try { await api.adPlatforms.delete(id); loadPlatforms() }
     catch { setError('削除に失敗しました') }
   }
@@ -109,113 +118,105 @@ export default function AdPlatformsPage() {
   }
 
   return (
-    <div>
-      <Header
+    <div className="py-6">
+      <PageHeader
         title="広告プラットフォーム"
         description="Meta / Google / X / TikTok のCV連携管理"
         action={
-          <button
-            onClick={() => setShowCreate(true)}
-            className="px-4 py-2 min-h-[44px] text-sm font-medium text-white rounded-lg transition-opacity hover:opacity-90"
-            style={{ backgroundColor: '#06C755' }}
-          >
-            + 新規プラットフォーム
-          </button>
+          <Button onClick={() => setShowCreate(true)}>+ 新規プラットフォーム</Button>
         }
       />
 
-      {error && <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">{error}</div>}
+      {error && (
+        <div className="mb-4 p-4 bg-destructive/10 border border-destructive/20 rounded-md text-destructive text-sm">{error}</div>
+      )}
 
       {showCreate && (
-        <div className="mb-6 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h2 className="text-sm font-semibold text-gray-800 mb-4">新規広告プラットフォームを追加</h2>
+        <div className="mb-6 bg-card rounded-lg border border-border p-6">
+          <h2 className="text-sm font-semibold text-foreground mb-4">新規広告プラットフォームを追加</h2>
           <div className="space-y-4 max-w-lg">
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">プラットフォーム <span className="text-red-500">*</span></label>
-              <select className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">プラットフォーム <span className="text-destructive">*</span></label>
+              <select className={inputClass} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}>
                 {platformOptions.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">表示名 (省略可)</label>
-              <input type="text" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="例: メイン Meta ピクセル" value={form.displayName} onChange={(e) => setForm({ ...form, displayName: e.target.value })} />
+              <label className="block text-xs font-medium text-muted-foreground mb-1">表示名 (省略可)</label>
+              <input type="text" className={inputClass} placeholder="例: メイン Meta ピクセル" value={form.displayName} onChange={(e) => setForm({ ...form, displayName: e.target.value })} />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">設定 (JSON) <span className="text-red-500">*</span></label>
-              <textarea className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-green-500 resize-y" rows={6} value={form.configJson} onChange={(e) => setForm({ ...form, configJson: e.target.value })} />
+              <label className="block text-xs font-medium text-muted-foreground mb-1">設定 (JSON) <span className="text-destructive">*</span></label>
+              <textarea className={`${inputClass} font-mono resize-y`} rows={6} value={form.configJson} onChange={(e) => setForm({ ...form, configJson: e.target.value })} />
             </div>
-            {formError && <p className="text-xs text-red-600">{formError}</p>}
+            {formError && <p className="text-xs text-destructive">{formError}</p>}
             <div className="flex gap-2">
-              <button onClick={handleCreate} disabled={saving} className="px-4 py-2 min-h-[44px] text-sm font-medium text-white rounded-lg disabled:opacity-50 transition-opacity" style={{ backgroundColor: '#06C755' }}>{saving ? '追加中...' : '追加'}</button>
-              <button onClick={() => { setShowCreate(false); setFormError('') }} className="px-4 py-2 min-h-[44px] text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">キャンセル</button>
+              <Button onClick={handleCreate} disabled={saving}>{saving ? '追加中...' : '追加'}</Button>
+              <Button variant="outline" onClick={() => { setShowCreate(false); setFormError('') }}>キャンセル</Button>
             </div>
           </div>
         </div>
       )}
 
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {[...Array(2)].map((_, i) => (
-            <div key={i} className="bg-white rounded-lg border border-gray-200 p-5 animate-pulse space-y-3">
-              <div className="h-4 bg-gray-200 rounded w-3/4" />
-              <div className="h-3 bg-gray-100 rounded w-full" />
-            </div>
-          ))}
-        </div>
+        <LoadingState rows={2} columns={3} />
       ) : platforms.length === 0 && !showCreate ? (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
-          <p className="text-gray-500">広告プラットフォームが未設定です。「新規プラットフォーム」から追加してください。</p>
-        </div>
+        <EmptyState
+          icon={<MonitorDot size={32} />}
+          title="広告プラットフォームが未設定です"
+          description="「新規プラットフォーム」から追加してください"
+          action={<Button onClick={() => setShowCreate(true)}>新規プラットフォーム</Button>}
+        />
       ) : (
         <div className="space-y-4">
           {platforms.map((p) => (
-            <div key={p.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-5 hover:shadow-md transition-shadow">
+            <div key={p.id} className="bg-card rounded-lg border border-border p-5 hover:shadow-sm transition-shadow">
               <div className="flex items-start justify-between mb-2">
                 <div>
-                  <h3 className="text-sm font-semibold text-gray-900">{p.displayName || platformOptions.find(o => o.value === p.name)?.label || p.name}</h3>
+                  <h3 className="text-sm font-semibold text-foreground">{p.displayName || platformOptions.find(o => o.value === p.name)?.label || p.name}</h3>
                 </div>
                 <button
                   onClick={() => handleToggleActive(p.id, p.isActive)}
-                  className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${p.isActive ? 'bg-green-500' : 'bg-gray-300'}`}
+                  className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${p.isActive ? 'bg-primary' : 'bg-muted'}`}
                 >
                   <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${p.isActive ? 'translate-x-4' : 'translate-x-0'}`} />
                 </button>
               </div>
 
               <div className="flex items-center gap-2 mb-3">
-                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${platformBadgeColor[p.name] || 'bg-gray-100 text-gray-600'}`}>
+                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${platformBadgeColor[p.name] || 'bg-muted text-muted-foreground'}`}>
                   {p.name}
                 </span>
-                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${p.isActive ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${p.isActive ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
                   {p.isActive ? '有効' : '無効'}
                 </span>
               </div>
 
-              <div className="text-xs text-gray-400 mb-3 font-mono bg-gray-50 rounded p-2 overflow-auto max-h-20">
+              <div className="text-xs text-muted-foreground mb-3 font-mono bg-muted/50 rounded p-2 overflow-auto max-h-20">
                 {Object.entries(p.config).map(([k, v]) => (
                   <div key={k}>{k}: {String(v)}</div>
                 ))}
               </div>
 
-              <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-                <button onClick={() => handleViewLogs(p.id)} className="text-xs text-green-600 hover:text-green-700">
+              <div className="flex items-center justify-between pt-2 border-t border-border">
+                <button onClick={() => handleViewLogs(p.id)} className="text-xs text-primary hover:text-primary/80">
                   {selectedLogs?.id === p.id ? 'ログを閉じる' : 'CV送信ログ'}
                 </button>
-                <button onClick={() => handleDelete(p.id)} className="px-3 py-1 min-h-[44px] text-xs font-medium text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-md transition-colors">削除</button>
+                <button onClick={() => setConfirmDelete(p.id)} className="px-3 py-1 min-h-[44px] text-xs font-medium text-destructive hover:text-destructive/80 bg-destructive/5 hover:bg-destructive/10 rounded-md transition-colors">削除</button>
               </div>
 
               {selectedLogs?.id === p.id && (
-                <div className="mt-3 border-t border-gray-100 pt-3">
+                <div className="mt-3 border-t border-border pt-3">
                   {selectedLogs.logs.length === 0 ? (
-                    <p className="text-xs text-gray-400">ログがありません</p>
+                    <p className="text-xs text-muted-foreground">ログがありません</p>
                   ) : (
                     <div className="space-y-1 max-h-48 overflow-auto">
                       {selectedLogs.logs.map((log) => (
                         <div key={log.id} className="flex items-center gap-2 text-xs">
                           <span className={`w-2 h-2 rounded-full shrink-0 ${log.status === 'success' ? 'bg-green-500' : 'bg-red-500'}`} />
-                          <span className="text-gray-600">{log.eventName}</span>
-                          <span className="text-gray-400">{new Date(log.createdAt).toLocaleString('ja-JP')}</span>
-                          {log.errorMessage && <span className="text-red-500 truncate">{log.errorMessage}</span>}
+                          <span className="text-muted-foreground">{log.eventName}</span>
+                          <span className="text-muted-foreground/60">{new Date(log.createdAt).toLocaleString('ja-JP')}</span>
+                          {log.errorMessage && <span className="text-destructive truncate">{log.errorMessage}</span>}
                         </div>
                       ))}
                     </div>
@@ -226,6 +227,16 @@ export default function AdPlatformsPage() {
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmDelete !== null}
+        onOpenChange={(open) => { if (!open) setConfirmDelete(null) }}
+        title="広告プラットフォームを削除しますか？"
+        description="この操作は元に戻せません。"
+        confirmLabel="削除する"
+        variant="destructive"
+        onConfirm={() => confirmDelete && handleDelete(confirmDelete)}
+      />
     </div>
   )
 }

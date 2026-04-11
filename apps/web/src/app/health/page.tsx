@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import Header from '@/components/layout/header'
 import { api } from '@/lib/api'
+import { PageHeader } from '@/components/ui/page-header'
+import { Button } from '@/components/ui/button'
 import CcPromptButton from '@/components/cc-prompt-button'
 
 interface LineAccount {
@@ -87,7 +88,6 @@ export default function HealthPage() {
       if (res.success) {
         const data = res.data as unknown as LineAccount[]
         setAccounts(data)
-        // Load health for each account
         const risks: Record<string, AccountHealthLog['riskLevel']> = {}
         for (const account of data) {
           try {
@@ -161,29 +161,26 @@ export default function HealthPage() {
   }
 
   return (
-    <div>
-      <Header title="BAN検知ダッシュボード" />
+    <div className="py-6">
+      <PageHeader title="BAN検知ダッシュボード" />
 
-      {/* Error */}
       {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+        <div className="mb-4 p-4 bg-destructive/10 border border-destructive/20 rounded-md text-destructive text-sm">
           {error}
         </div>
       )}
 
-      {/* Loading */}
       {loading ? (
-        <div className="bg-white rounded-lg border border-gray-200 p-8 text-center text-gray-400">
+        <div className="bg-card rounded-lg border border-border p-8 text-center text-muted-foreground">
           読み込み中...
         </div>
       ) : accounts.length === 0 ? (
-        <div className="bg-white rounded-lg border border-gray-200 p-8 text-center text-gray-400">
+        <div className="bg-card rounded-lg border border-border p-8 text-center text-muted-foreground">
           <p className="mb-2">LINEアカウントが登録されていません</p>
-          <p className="text-xs text-gray-300">先にアカウント管理からLINEアカウントを登録してください</p>
+          <p className="text-xs text-muted-foreground/60">先にアカウント管理からLINEアカウントを登録してください</p>
         </div>
       ) : (
         <>
-          {/* Account Health Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
             {accounts.map((account) => {
               const risk = latestRisk[account.id] || 'normal'
@@ -192,22 +189,19 @@ export default function HealthPage() {
               const logs = healthLogs[account.id] || []
 
               return (
-                <div key={account.id} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                <div key={account.id} className="bg-card rounded-lg border border-border overflow-hidden">
                   <button
                     onClick={() => handleExpand(account.id)}
-                    className="w-full p-4 text-left hover:bg-gray-50 transition-colors"
+                    className="w-full p-4 text-left hover:bg-accent/50 transition-colors"
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div
-                          className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-sm"
-                          style={{ backgroundColor: '#06C755' }}
-                        >
+                        <div className="w-10 h-10 rounded-lg flex items-center justify-center text-primary-foreground font-bold text-sm bg-primary">
                           L
                         </div>
                         <div>
-                          <h3 className="text-sm font-bold text-gray-900">{account.name}</h3>
-                          <p className="text-xs text-gray-400 font-mono">Channel: {account.channelId}</p>
+                          <h3 className="text-sm font-bold text-foreground">{account.name}</h3>
+                          <p className="text-xs text-muted-foreground font-mono">Channel: {account.channelId}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
@@ -216,7 +210,7 @@ export default function HealthPage() {
                           {config.label}
                         </span>
                         <svg
-                          className={`w-4 h-4 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                          className={`w-4 h-4 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`}
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
@@ -227,9 +221,8 @@ export default function HealthPage() {
                     </div>
                   </button>
 
-                  {/* Expanded: Health Logs */}
                   {isExpanded && (
-                    <div className="border-t border-gray-200 p-4">
+                    <div className="border-t border-border p-4">
                       {risk === 'danger' && (
                         <div className="mb-3">
                           <button
@@ -245,12 +238,12 @@ export default function HealthPage() {
                       )}
 
                       {logs.length === 0 ? (
-                        <p className="text-sm text-gray-400 text-center py-4">ヘルスログがありません</p>
+                        <p className="text-sm text-muted-foreground text-center py-4">ヘルスログがありません</p>
                       ) : (
                         <div className="overflow-x-auto">
                           <table className="w-full text-sm">
                             <thead>
-                              <tr className="text-left text-xs text-gray-500 border-b border-gray-100">
+                              <tr className="text-left text-xs text-muted-foreground border-b border-border">
                                 <th className="pb-2 pr-3 font-medium">エラーコード</th>
                                 <th className="pb-2 pr-3 font-medium">エラー数</th>
                                 <th className="pb-2 pr-3 font-medium">チェック期間</th>
@@ -262,19 +255,19 @@ export default function HealthPage() {
                               {logs.map((log) => {
                                 const logConfig = riskConfig[log.riskLevel]
                                 return (
-                                  <tr key={log.id} className="border-b border-gray-50">
-                                    <td className="py-2 pr-3 font-mono text-gray-700">
+                                  <tr key={log.id} className="border-b border-border/50">
+                                    <td className="py-2 pr-3 font-mono text-foreground">
                                       {log.errorCode !== null ? log.errorCode : '-'}
                                     </td>
-                                    <td className="py-2 pr-3 text-gray-700">{log.errorCount}</td>
-                                    <td className="py-2 pr-3 text-gray-500">{log.checkPeriod}</td>
+                                    <td className="py-2 pr-3 text-foreground">{log.errorCount}</td>
+                                    <td className="py-2 pr-3 text-muted-foreground">{log.checkPeriod}</td>
                                     <td className="py-2 pr-3">
                                       <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${logConfig.bgColor} ${logConfig.textColor}`}>
                                         <span className={`w-1.5 h-1.5 rounded-full ${logConfig.color} ${log.riskLevel === 'danger' ? 'animate-pulse' : ''}`} />
                                         {logConfig.label}
                                       </span>
                                     </td>
-                                    <td className="py-2 text-gray-400 text-xs">
+                                    <td className="py-2 text-muted-foreground text-xs">
                                       {new Date(log.createdAt).toLocaleString('ja-JP')}
                                     </td>
                                   </tr>
@@ -291,19 +284,18 @@ export default function HealthPage() {
             })}
           </div>
 
-          {/* Migration Form Modal */}
           {migrateFrom && (
-            <div className="mb-8 bg-white rounded-lg border border-red-200 p-6">
-              <h2 className="text-sm font-bold text-gray-900 mb-4">
+            <div className="mb-8 bg-card rounded-lg border border-destructive/30 p-6">
+              <h2 className="text-sm font-bold text-foreground mb-4">
                 友だち移行: {getAccountName(migrateFrom)}
               </h2>
               <form onSubmit={handleMigrate}>
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">移行先アカウント</label>
+                  <label className="block text-sm font-medium text-foreground mb-1">移行先アカウント</label>
                   <select
                     value={migrateToId}
                     onChange={(e) => setMigrateToId(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-500"
+                    className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                     required
                   >
                     <option value="">選択してください</option>
@@ -317,42 +309,36 @@ export default function HealthPage() {
                   </select>
                 </div>
                 <div className="flex items-center gap-3">
-                  <button
-                    type="submit"
-                    disabled={migrating || !migrateToId}
-                    className="px-4 py-2 rounded-lg text-white text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                    style={{ backgroundColor: '#06C755' }}
-                  >
+                  <Button type="submit" disabled={migrating || !migrateToId}>
                     {migrating ? '移行中...' : '移行を開始'}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
+                    variant="outline"
                     onClick={() => {
                       setMigrateFrom(null)
                       setMigrateToId('')
                     }}
-                    className="px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
                   >
                     キャンセル
-                  </button>
+                  </Button>
                 </div>
               </form>
             </div>
           )}
 
-          {/* Migrations Table */}
           <div>
-            <h2 className="text-lg font-bold text-gray-900 mb-4">移行履歴</h2>
+            <h2 className="text-lg font-bold text-foreground mb-4">移行履歴</h2>
             {migrations.length === 0 ? (
-              <div className="bg-white rounded-lg border border-gray-200 p-8 text-center text-gray-400">
+              <div className="bg-card rounded-lg border border-border p-8 text-center text-muted-foreground">
                 移行履歴はありません
               </div>
             ) : (
-              <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+              <div className="bg-card rounded-lg border border-border overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm min-w-[640px]">
                     <thead>
-                      <tr className="text-left text-xs text-gray-500 bg-gray-50 border-b border-gray-200">
+                      <tr className="text-left text-xs text-muted-foreground bg-muted/50 border-b border-border">
                         <th className="px-4 py-3 font-medium">移行元</th>
                         <th className="px-4 py-3 font-medium">移行先</th>
                         <th className="px-4 py-3 font-medium">ステータス</th>
@@ -368,11 +354,11 @@ export default function HealthPage() {
                           ? Math.round((migration.migratedCount / migration.totalCount) * 100)
                           : 0
                         return (
-                          <tr key={migration.id} className="border-b border-gray-100 hover:bg-gray-50">
-                            <td className="px-4 py-3 text-gray-900 font-medium">
+                          <tr key={migration.id} className="border-b border-border hover:bg-accent/50">
+                            <td className="px-4 py-3 text-foreground font-medium">
                               {getAccountName(migration.fromAccountId)}
                             </td>
-                            <td className="px-4 py-3 text-gray-900 font-medium">
+                            <td className="px-4 py-3 text-foreground font-medium">
                               {getAccountName(migration.toAccountId)}
                             </td>
                             <td className="px-4 py-3">
@@ -382,21 +368,21 @@ export default function HealthPage() {
                             </td>
                             <td className="px-4 py-3">
                               <div className="flex items-center gap-2">
-                                <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
+                                <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
                                   <div
-                                    className="h-full rounded-full transition-all"
-                                    style={{ width: `${progress}%`, backgroundColor: '#06C755' }}
+                                    className="h-full bg-primary rounded-full transition-all"
+                                    style={{ width: `${progress}%` }}
                                   />
                                 </div>
-                                <span className="text-xs text-gray-500">
+                                <span className="text-xs text-muted-foreground">
                                   {migration.migratedCount}/{migration.totalCount}
                                 </span>
                               </div>
                             </td>
-                            <td className="px-4 py-3 text-gray-400 text-xs">
+                            <td className="px-4 py-3 text-muted-foreground text-xs">
                               {new Date(migration.createdAt).toLocaleString('ja-JP')}
                             </td>
-                            <td className="px-4 py-3 text-gray-400 text-xs">
+                            <td className="px-4 py-3 text-muted-foreground text-xs">
                               {migration.completedAt
                                 ? new Date(migration.completedAt).toLocaleString('ja-JP')
                                 : '-'}

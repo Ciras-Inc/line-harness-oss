@@ -3,8 +3,14 @@
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
 import type { ConversionPoint } from '@line-crm/shared'
-import Header from '@/components/layout/header'
+import { PageHeader } from '@/components/ui/page-header'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { LoadingState } from '@/components/ui/loading-state'
+import { EmptyState } from '@/components/ui/empty-state'
 import CcPromptButton from '@/components/cc-prompt-button'
+import { Target } from 'lucide-react'
 
 interface ConversionReportItem {
   conversionPointId: string
@@ -13,6 +19,9 @@ interface ConversionReportItem {
   totalCount: number
   totalValue: number
 }
+
+const inputClass =
+  'w-full border border-border rounded-lg px-3 py-2 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring'
 
 const ccPrompts = [
   {
@@ -39,6 +48,7 @@ export default function ConversionsPage() {
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
   const [form, setForm] = useState({ name: '', eventType: '', value: '' })
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
 
   const load = async () => {
     setLoading(true)
@@ -71,7 +81,6 @@ export default function ConversionsPage() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('このCVポイントを削除しますか？')) return
     await api.conversions.deletePoint(id)
     load()
   }
@@ -89,40 +98,36 @@ export default function ConversionsPage() {
   ]
 
   return (
-    <div>
-      <Header
+    <div className="py-6">
+      <PageHeader
         title="コンバージョン計測"
         description="CVポイント定義 & レポート"
         action={
-          <button
-            onClick={() => setShowCreate(!showCreate)}
-            className="px-4 py-2 min-h-[44px] rounded-lg text-white text-sm font-medium"
-            style={{ backgroundColor: '#06C755' }}
-          >
+          <Button onClick={() => setShowCreate(!showCreate)}>
             {showCreate ? 'キャンセル' : '+ CVポイント作成'}
-          </button>
+          </Button>
         }
       />
 
       {showCreate && (
-        <form onSubmit={handleCreate} className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
+        <form onSubmit={handleCreate} className="bg-card rounded-lg border border-border p-6 mb-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">CV名</label>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">CV名</label>
               <input
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                className={inputClass}
                 placeholder="購入完了"
                 required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">イベントタイプ</label>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">イベントタイプ</label>
               <select
                 value={form.eventType}
                 onChange={(e) => setForm({ ...form, eventType: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                className={inputClass}
                 required
               >
                 <option value="">選択...</option>
@@ -132,44 +137,37 @@ export default function ConversionsPage() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">金額 (任意)</label>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">金額 (任意)</label>
               <input
                 type="number"
                 value={form.value}
                 onChange={(e) => setForm({ ...form, value: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                className={inputClass}
                 placeholder="0"
               />
             </div>
           </div>
-          <button
-            type="submit"
-            className="mt-4 px-4 py-2 min-h-[44px] rounded-lg text-white text-sm font-medium"
-            style={{ backgroundColor: '#06C755' }}
-          >
-            作成
-          </button>
+          <Button type="submit" className="mt-4">作成</Button>
         </form>
       )}
 
-      {/* Report Cards */}
       {report.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 mb-6">
           {report.map((r) => (
-            <div key={r.conversionPointId} className="bg-white rounded-lg border border-gray-200 p-4">
+            <div key={r.conversionPointId} className="bg-card rounded-lg border border-border p-4">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-sm font-medium text-gray-700">{r.conversionPointName}</p>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">{r.eventType}</span>
+                <p className="text-sm font-medium text-foreground">{r.conversionPointName}</p>
+                <Badge variant="outline">{r.eventType}</Badge>
               </div>
               <div className="flex items-end gap-4">
                 <div>
-                  <p className="text-2xl font-bold text-gray-900">{r.totalCount}</p>
-                  <p className="text-xs text-gray-400">CV数</p>
+                  <p className="text-2xl font-bold text-foreground">{r.totalCount}</p>
+                  <p className="text-xs text-muted-foreground">CV数</p>
                 </div>
                 {r.totalValue > 0 && (
                   <div>
-                    <p className="text-lg font-semibold text-green-600">{r.totalValue.toLocaleString('ja-JP', { style: 'currency', currency: 'JPY' })}</p>
-                    <p className="text-xs text-gray-400">売上</p>
+                    <p className="text-lg font-semibold text-primary">{r.totalValue.toLocaleString('ja-JP', { style: 'currency', currency: 'JPY' })}</p>
+                    <p className="text-xs text-muted-foreground">売上</p>
                   </div>
                 )}
               </div>
@@ -178,38 +176,42 @@ export default function ConversionsPage() {
         </div>
       )}
 
-      {/* Points Table */}
       {loading ? (
-        <div className="bg-white rounded-lg border border-gray-200 p-8 text-center text-gray-400">読み込み中...</div>
+        <LoadingState rows={3} columns={5} />
       ) : points.length === 0 ? (
-        <div className="bg-white rounded-lg border border-gray-200 p-8 text-center text-gray-400">CVポイントがまだありません</div>
+        <EmptyState
+          icon={<Target size={32} />}
+          title="CVポイントがありません"
+          description="「+ CVポイント作成」から最初のポイントを作成してください"
+          action={<Button onClick={() => setShowCreate(true)}>CVポイント作成</Button>}
+        />
       ) : (
-        <div className="bg-white rounded-lg border border-gray-200 overflow-x-auto">
+        <div className="bg-card rounded-lg border border-border overflow-x-auto">
           <table className="w-full min-w-[640px]">
-            <thead className="bg-gray-50 border-b border-gray-200">
+            <thead className="bg-muted/50 border-b border-border">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">CV名</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">イベントタイプ</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">金額</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">作成日</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">操作</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">CV名</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">イベントタイプ</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">金額</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">作成日</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase">操作</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody className="divide-y divide-border">
               {points.map((point) => (
-                <tr key={point.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-sm font-medium text-gray-900">{point.name}</td>
+                <tr key={point.id} className="hover:bg-accent/50 transition-colors">
+                  <td className="px-4 py-3 text-sm font-medium text-foreground">{point.name}</td>
                   <td className="px-4 py-3">
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">{point.eventType}</span>
+                    <Badge variant="outline">{point.eventType}</Badge>
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-600">
+                  <td className="px-4 py-3 text-sm text-muted-foreground">
                     {point.value !== null ? `¥${point.value.toLocaleString()}` : '-'}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-500">{new Date(point.createdAt).toLocaleDateString('ja-JP')}</td>
+                  <td className="px-4 py-3 text-sm text-muted-foreground">{new Date(point.createdAt).toLocaleDateString('ja-JP')}</td>
                   <td className="px-4 py-3 text-right">
                     <button
-                      onClick={() => handleDelete(point.id)}
-                      className="text-red-500 hover:text-red-700 text-sm"
+                      onClick={() => setConfirmDelete(point.id)}
+                      className="text-destructive hover:text-destructive/80 text-sm"
                     >
                       削除
                     </button>
@@ -220,6 +222,17 @@ export default function ConversionsPage() {
           </table>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmDelete !== null}
+        onOpenChange={(open) => { if (!open) setConfirmDelete(null) }}
+        title="CVポイントを削除しますか？"
+        description="この操作は元に戻せません。"
+        confirmLabel="削除する"
+        variant="destructive"
+        onConfirm={() => confirmDelete && handleDelete(confirmDelete)}
+      />
+
       <CcPromptButton prompts={ccPrompts} />
     </div>
   )

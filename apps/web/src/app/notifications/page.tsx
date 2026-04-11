@@ -2,8 +2,14 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { api } from '@/lib/api'
-import Header from '@/components/layout/header'
+import { PageHeader } from '@/components/ui/page-header'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { LoadingState } from '@/components/ui/loading-state'
+import { EmptyState } from '@/components/ui/empty-state'
 import CcPromptButton from '@/components/cc-prompt-button'
+import { Bell } from 'lucide-react'
 
 interface NotificationRule {
   id: string
@@ -80,6 +86,9 @@ const ccPrompts = [
   },
 ]
 
+const inputClass =
+  'w-full border border-border rounded-lg px-3 py-2 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring'
+
 export default function NotificationsPage() {
   const [rules, setRules] = useState<NotificationRule[]>([])
   const [notifications, setNotifications] = useState<Notification[]>([])
@@ -95,19 +104,18 @@ export default function NotificationsPage() {
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
 
   const loadRules = useCallback(async () => {
     try {
       const res = await api.notifications.rules.list()
       if (res.success) {
-        // channels may be a JSON string or already parsed array
         setRules((res.data as unknown as NotificationRule[]).map((r: NotificationRule) => ({
           ...r,
           channels: typeof r.channels === 'string' ? JSON.parse(r.channels) : r.channels,
           conditions: typeof r.conditions === 'string' ? JSON.parse(r.conditions) : r.conditions,
         })))
-      }
-      else setError(res.error)
+      } else setError(res.error)
     } catch {
       setError('通知ルールの読み込みに失敗しました。もう一度お試しください。')
     }
@@ -193,7 +201,6 @@ export default function NotificationsPage() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('このルールを削除してもよいですか？')) return
     try {
       await api.notifications.rules.delete(id)
       loadRules()
@@ -208,66 +215,61 @@ export default function NotificationsPage() {
   }
 
   return (
-    <div>
-      <Header
+    <div className="py-6">
+      <PageHeader
         title="通知ルール設定"
-        action={
-          <button
-            onClick={() => setShowCreate(true)}
-            className="px-4 py-2 text-sm font-medium text-white rounded-lg transition-opacity hover:opacity-90"
-            style={{ backgroundColor: '#06C755' }}
-          >
-            + 新規ルール
-          </button>
-        }
+        description="イベント発生時の通知チャネル管理"
+        action={<Button onClick={() => setShowCreate(true)}>+ 新規ルール</Button>}
       />
 
-      {/* Error */}
       {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+        <div className="mb-4 p-4 bg-destructive/10 border border-destructive/20 rounded-md text-destructive text-sm">
           {error}
         </div>
       )}
 
-      {/* Create form */}
       {showCreate && (
-        <div className="mb-6 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h2 className="text-sm font-semibold text-gray-800 mb-4">新規ルールを作成</h2>
+        <div className="mb-6 rounded-md border border-border bg-card p-6">
+          <h2 className="text-sm font-semibold text-foreground mb-4">新規ルールを作成</h2>
           <div className="space-y-4 max-w-lg">
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">ルール名 <span className="text-red-500">*</span></label>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">
+                ルール名 <span className="text-destructive">*</span>
+              </label>
               <input
                 type="text"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                className={inputClass}
                 placeholder="例: 新規友だち追加通知"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">イベントタイプ <span className="text-red-500">*</span></label>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">
+                イベントタイプ <span className="text-destructive">*</span>
+              </label>
               <input
                 type="text"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                className={inputClass}
                 placeholder="例: friend_add, message_received, tag_added"
                 value={form.eventType}
                 onChange={(e) => setForm({ ...form, eventType: e.target.value })}
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">通知チャンネル</label>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">通知チャンネル</label>
               <input
                 type="text"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                className={inputClass}
                 placeholder="email,slack,webhook (カンマ区切り)"
                 value={form.channels}
                 onChange={(e) => setForm({ ...form, channels: e.target.value })}
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">条件 (JSON)</label>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">条件 (JSON)</label>
               <textarea
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
+                className={`${inputClass} font-mono resize-none`}
                 rows={3}
                 placeholder='{"tagId": "xxx"}'
                 value={form.conditions}
@@ -275,66 +277,51 @@ export default function NotificationsPage() {
               />
             </div>
 
-            {formError && <p className="text-xs text-red-600">{formError}</p>}
+            {formError && <p className="text-xs text-destructive">{formError}</p>}
 
             <div className="flex gap-2">
-              <button
-                onClick={handleCreate}
-                disabled={saving}
-                className="px-4 py-2 text-sm font-medium text-white rounded-lg disabled:opacity-50 transition-opacity"
-                style={{ backgroundColor: '#06C755' }}
-              >
+              <Button onClick={handleCreate} disabled={saving}>
                 {saving ? '作成中...' : '作成'}
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="outline"
                 onClick={() => { setShowCreate(false); setFormError('') }}
-                className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
               >
                 キャンセル
-              </button>
+              </Button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Rules section */}
       <div className="mb-8">
-        <h2 className="text-sm font-semibold text-gray-800 mb-3">通知ルール</h2>
+        <h2 className="text-sm font-semibold text-foreground mb-3">通知ルール</h2>
 
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {[...Array(3)].map((_, i) => (
-              <div key={i} className="bg-white rounded-lg border border-gray-200 p-5 animate-pulse space-y-3">
-                <div className="h-4 bg-gray-200 rounded w-3/4" />
-                <div className="h-3 bg-gray-100 rounded w-full" />
-                <div className="flex gap-4">
-                  <div className="h-3 bg-gray-100 rounded w-24" />
-                  <div className="h-3 bg-gray-100 rounded w-16" />
-                </div>
-              </div>
-            ))}
-          </div>
+          <LoadingState rows={3} columns={3} />
         ) : rules.length === 0 && !showCreate ? (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
-            <p className="text-gray-500">通知ルールがありません。「新規ルール」から作成してください。</p>
-          </div>
+          <EmptyState
+            icon={<Bell size={32} />}
+            title="通知ルールがありません"
+            description="「新規ルール」から最初のルールを作成してください"
+            action={<Button onClick={() => setShowCreate(true)}>新規ルール</Button>}
+          />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {rules.map((rule) => (
               <div
                 key={rule.id}
-                className="bg-white rounded-lg shadow-sm border border-gray-200 p-5 flex flex-col gap-3"
+                className="bg-card rounded-lg border border-border p-5 flex flex-col gap-3 hover:shadow-sm transition-shadow"
               >
-                {/* Header */}
-                <div className="flex items-start justify-between">
+                <div className="flex items-start justify-between gap-2">
                   <div>
-                    <p className="text-sm font-medium text-gray-900">{rule.name}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">{rule.eventType}</p>
+                    <p className="text-sm font-medium text-foreground">{rule.name}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{rule.eventType}</p>
                   </div>
                   <button
                     onClick={() => handleToggleActive(rule.id, rule.isActive)}
                     className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                      rule.isActive ? 'bg-green-500' : 'bg-gray-300'
+                      rule.isActive ? 'bg-primary' : 'bg-muted'
                     }`}
                   >
                     <span
@@ -345,24 +332,17 @@ export default function NotificationsPage() {
                   </button>
                 </div>
 
-                {/* Channels */}
                 <div className="flex flex-wrap gap-1">
                   {rule.channels.map((ch) => (
-                    <span
-                      key={ch}
-                      className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700"
-                    >
-                      {ch}
-                    </span>
+                    <Badge key={ch} variant="secondary">{ch}</Badge>
                   ))}
                 </div>
 
-                {/* Footer */}
-                <div className="flex items-center justify-between mt-auto pt-2 border-t border-gray-100">
-                  <span className="text-xs text-gray-400">{formatDatetime(rule.createdAt)}</span>
+                <div className="flex items-center justify-between mt-auto pt-2 border-t border-border">
+                  <span className="text-xs text-muted-foreground">{formatDatetime(rule.createdAt)}</span>
                   <button
-                    onClick={() => handleDelete(rule.id)}
-                    className="px-3 py-1 text-xs font-medium text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-md transition-colors"
+                    onClick={() => setConfirmDelete(rule.id)}
+                    className="text-xs font-medium text-destructive hover:text-destructive/80 transition-colors"
                   >
                     削除
                   </button>
@@ -373,12 +353,11 @@ export default function NotificationsPage() {
         )}
       </div>
 
-      {/* Notification log section */}
       <div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-3">
-          <h2 className="text-sm font-semibold text-gray-800">通知履歴</h2>
+          <h2 className="text-sm font-semibold text-foreground">通知履歴</h2>
           <select
-            className="border border-gray-300 rounded-lg px-3 py-1.5 min-h-[44px] text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
+            className="border border-border rounded-lg px-3 py-1.5 min-h-[44px] text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             value={statusFilter}
             onChange={(e) => handleStatusFilterChange(e.target.value)}
           >
@@ -389,76 +368,68 @@ export default function NotificationsPage() {
         </div>
 
         {loading ? (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="px-4 py-4 border-b border-gray-100 flex items-center gap-4 animate-pulse">
-                <div className="flex-1 space-y-2">
-                  <div className="h-3 bg-gray-200 rounded w-48" />
-                  <div className="h-2 bg-gray-100 rounded w-32" />
-                </div>
-                <div className="h-5 bg-gray-100 rounded-full w-16" />
-                <div className="h-3 bg-gray-100 rounded w-24" />
-              </div>
-            ))}
-          </div>
+          <LoadingState rows={4} columns={5} />
         ) : notifications.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
-            <p className="text-gray-500">通知履歴がありません。</p>
+          <div className="bg-card rounded-lg border border-border p-12 text-center">
+            <p className="text-muted-foreground text-sm">通知履歴がありません。</p>
           </div>
         ) : (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+          <div className="bg-card rounded-lg border border-border overflow-hidden">
             <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px]">
-              <thead>
-                <tr className="bg-gray-50 border-b border-gray-200">
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    タイトル
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    イベントタイプ
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    チャンネル
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    ステータス
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    日時
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {notifications.map((notification) => {
-                  const statusInfo = statusConfig[notification.status]
-                  return (
-                    <tr key={notification.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-3">
-                        <p className="text-sm font-medium text-gray-900">{notification.title}</p>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-600">
-                        {notification.eventType}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-600">
-                        {notification.channel}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${statusInfo.className}`}>
-                          {statusInfo.label}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-500">
-                        {formatDatetime(notification.createdAt)}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+              <table className="w-full min-w-[640px]">
+                <thead>
+                  <tr className="bg-muted/50 border-b border-border">
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">タイトル</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">イベントタイプ</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">チャンネル</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">ステータス</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">日時</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {notifications.map((notification) => {
+                    const statusInfo = statusConfig[notification.status]
+                    return (
+                      <tr key={notification.id} className="hover:bg-accent/50 transition-colors">
+                        <td className="px-4 py-3">
+                          <p className="text-sm font-medium text-foreground">{notification.title}</p>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-muted-foreground">
+                          {notification.eventType}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-muted-foreground">
+                          {notification.channel}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${statusInfo.className}`}>
+                            {statusInfo.label}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-muted-foreground">
+                          {formatDatetime(notification.createdAt)}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
             </div>
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={confirmDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setConfirmDelete(null)
+        }}
+        title="通知ルールを削除しますか？"
+        description="この操作は元に戻せません。"
+        confirmLabel="削除する"
+        variant="destructive"
+        onConfirm={() => confirmDelete && handleDelete(confirmDelete)}
+      />
+
       <CcPromptButton prompts={ccPrompts} />
     </div>
   )

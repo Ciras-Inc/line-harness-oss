@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { api } from '@/lib/api'
-import Header from '@/components/layout/header'
+import { PageHeader } from '@/components/ui/page-header'
 import CcPromptButton from '@/components/cc-prompt-button'
 
 type ActionStatus = 'idle' | 'confirming' | 'executing' | 'done' | 'error'
@@ -135,45 +135,43 @@ export default function EmergencyPage() {
   }
 
   return (
-    <div>
-      <Header title="緊急コントロール" />
+    <div className="py-6">
+      <PageHeader title="緊急コントロール" />
 
-      {/* Warning banner */}
-      <div className="mb-6 p-4 bg-red-50 border-2 border-red-300 rounded-lg">
+      <div className="mb-6 p-4 bg-destructive/10 border-2 border-destructive/30 rounded-lg">
         <div className="flex items-start gap-3">
-          <svg className="w-6 h-6 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-6 h-6 text-destructive shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
               d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.072 16.5c-.77.833.192 2.5 1.732 2.5z" />
           </svg>
           <div>
-            <p className="text-sm font-bold text-red-800">注意: この操作は即時実行されます</p>
-            <p className="text-xs text-red-600 mt-1">
+            <p className="text-sm font-bold text-destructive">注意: この操作は即時実行されます</p>
+            <p className="text-xs text-destructive/80 mt-1">
               各ボタンをクリックすると確認ダイアログが表示されます。「実行」で操作が開始されます。
             </p>
           </div>
         </div>
       </div>
 
-      {/* Action cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
         {actions.map((action) => (
           <div
             key={action.id}
-            className="bg-white rounded-lg shadow-sm border-2 border-red-200 p-5 flex flex-col"
+            className="bg-card rounded-lg border-2 border-destructive/20 p-5 flex flex-col"
           >
             <div className="flex items-start justify-between mb-2">
-              <h3 className="text-sm font-bold text-gray-900">{action.label}</h3>
+              <h3 className="text-sm font-bold text-foreground">{action.label}</h3>
               {getStatusBadge(action.status)}
             </div>
-            <p className="text-xs text-gray-500 mb-4 flex-1">{action.description}</p>
+            <p className="text-xs text-muted-foreground mb-4 flex-1">{action.description}</p>
 
             {action.errorMessage && (
-              <p className="text-xs text-red-600 mb-3">{action.errorMessage}</p>
+              <p className="text-xs text-destructive mb-3">{action.errorMessage}</p>
             )}
 
             {action.status === 'confirming' ? (
               <div className="space-y-2">
-                <p className="text-xs font-medium text-red-700">本当に実行しますか？</p>
+                <p className="text-xs font-medium text-destructive">本当に実行しますか？</p>
                 <div className="flex gap-2">
                   <button
                     onClick={() => handleAction(action.id)}
@@ -183,7 +181,7 @@ export default function EmergencyPage() {
                   </button>
                   <button
                     onClick={() => handleCancel(action.id)}
-                    className="flex-1 px-3 py-2 min-h-[44px] text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                    className="flex-1 px-3 py-2 min-h-[44px] text-sm font-medium text-muted-foreground bg-muted hover:bg-muted/80 rounded-lg transition-colors"
                   >
                     キャンセル
                   </button>
@@ -202,13 +200,12 @@ export default function EmergencyPage() {
         ))}
       </div>
 
-      {/* Current status section */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h2 className="text-sm font-semibold text-gray-800 mb-3">現在のステータス</h2>
+      <div className="bg-card rounded-lg border border-border p-6">
+        <h2 className="text-sm font-semibold text-foreground mb-3">現在のステータス</h2>
         <div className="space-y-2">
           {actions.map((action) => (
-            <div key={action.id} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
-              <span className="text-sm text-gray-600">{action.label}</span>
+            <div key={action.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+              <span className="text-sm text-muted-foreground">{action.label}</span>
               <span className={`text-xs font-medium ${
                 action.status === 'done'
                   ? 'text-green-600'
@@ -216,7 +213,7 @@ export default function EmergencyPage() {
                   ? 'text-red-600'
                   : action.status === 'executing'
                   ? 'text-yellow-600'
-                  : 'text-gray-400'
+                  : 'text-muted-foreground'
               }`}>
                 {action.status === 'idle' && '未実行'}
                 {action.status === 'confirming' && '確認待ち'}

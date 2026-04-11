@@ -3,8 +3,14 @@
 import { useState, useEffect, useCallback } from 'react'
 import { api } from '@/lib/api'
 import { useAccount } from '@/contexts/account-context'
-import Header from '@/components/layout/header'
+import { PageHeader } from '@/components/ui/page-header'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { LoadingState } from '@/components/ui/loading-state'
+import { EmptyState } from '@/components/ui/empty-state'
 import CcPromptButton from '@/components/cc-prompt-button'
+import { Bell } from 'lucide-react'
 
 interface Reminder {
   id: string
@@ -83,6 +89,9 @@ const ccPrompts = [
   },
 ]
 
+const inputClass =
+  'w-full border border-border rounded-lg px-3 py-2 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring'
+
 export default function RemindersPage() {
   const { selectedAccountId } = useAccount()
   const [reminders, setReminders] = useState<Reminder[]>([])
@@ -92,13 +101,13 @@ export default function RemindersPage() {
   const [form, setForm] = useState<CreateFormState>({ name: '', description: '' })
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+  const [confirmDeleteStep, setConfirmDeleteStep] = useState<string | null>(null)
 
-  // Expanded card state
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [expandedData, setExpandedData] = useState<ReminderWithSteps | null>(null)
   const [expandLoading, setExpandLoading] = useState(false)
 
-  // Step form state
   const [showStepForm, setShowStepForm] = useState(false)
   const [stepForm, setStepForm] = useState<StepFormState>({
     offsetMinutes: -60,
@@ -198,7 +207,6 @@ export default function RemindersPage() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('このリマインダーを削除してもよいですか？')) return
     try {
       await api.reminders.delete(id)
       if (expandedId === id) {
@@ -241,7 +249,6 @@ export default function RemindersPage() {
 
   const handleDeleteStep = async (stepId: string) => {
     if (!expandedId) return
-    if (!confirm('このステップを削除してもよいですか？')) return
     try {
       await api.reminders.deleteStep(expandedId, stepId)
       loadDetail(expandedId)
@@ -251,46 +258,39 @@ export default function RemindersPage() {
   }
 
   return (
-    <div>
-      <Header
+    <div className="py-6">
+      <PageHeader
         title="リマインダ配信"
-        action={
-          <button
-            onClick={() => setShowCreate(true)}
-            className="px-4 py-2 min-h-[44px] text-sm font-medium text-white rounded-lg transition-opacity hover:opacity-90"
-            style={{ backgroundColor: '#06C755' }}
-          >
-            + 新規リマインダー
-          </button>
-        }
+        description="基準時刻に対するオフセット配信ステップ管理"
+        action={<Button onClick={() => setShowCreate(true)}>+ 新規リマインダー</Button>}
       />
 
-      {/* Error */}
       {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+        <div className="mb-4 p-4 bg-destructive/10 border border-destructive/20 rounded-md text-destructive text-sm">
           {error}
         </div>
       )}
 
-      {/* Create form */}
       {showCreate && (
-        <div className="mb-6 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h2 className="text-sm font-semibold text-gray-800 mb-4">新規リマインダーを作成</h2>
+        <div className="mb-6 rounded-md border border-border bg-card p-6">
+          <h2 className="text-sm font-semibold text-foreground mb-4">新規リマインダーを作成</h2>
           <div className="space-y-4 max-w-lg">
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">リマインダー名 <span className="text-red-500">*</span></label>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">
+                リマインダー名 <span className="text-destructive">*</span>
+              </label>
               <input
                 type="text"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                className={inputClass}
                 placeholder="例: セミナー参加リマインダー"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">説明</label>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">説明</label>
               <textarea
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
+                className={`${inputClass} resize-none`}
                 rows={2}
                 placeholder="リマインダーの説明 (省略可)"
                 value={form.description}
@@ -298,46 +298,32 @@ export default function RemindersPage() {
               />
             </div>
 
-            {formError && <p className="text-xs text-red-600">{formError}</p>}
+            {formError && <p className="text-xs text-destructive">{formError}</p>}
 
             <div className="flex gap-2">
-              <button
-                onClick={handleCreate}
-                disabled={saving}
-                className="px-4 py-2 min-h-[44px] text-sm font-medium text-white rounded-lg disabled:opacity-50 transition-opacity"
-                style={{ backgroundColor: '#06C755' }}
-              >
+              <Button onClick={handleCreate} disabled={saving}>
                 {saving ? '作成中...' : '作成'}
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="outline"
                 onClick={() => { setShowCreate(false); setFormError('') }}
-                className="px-4 py-2 min-h-[44px] text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
               >
                 キャンセル
-              </button>
+              </Button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Loading skeleton */}
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="bg-white rounded-lg border border-gray-200 p-5 animate-pulse space-y-3">
-              <div className="h-4 bg-gray-200 rounded w-3/4" />
-              <div className="h-3 bg-gray-100 rounded w-full" />
-              <div className="flex gap-4">
-                <div className="h-3 bg-gray-100 rounded w-24" />
-                <div className="h-3 bg-gray-100 rounded w-16" />
-              </div>
-            </div>
-          ))}
-        </div>
+        <LoadingState rows={3} columns={3} />
       ) : reminders.length === 0 && !showCreate ? (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
-          <p className="text-gray-500">リマインダーがありません。「新規リマインダー」から作成してください。</p>
-        </div>
+        <EmptyState
+          icon={<Bell size={32} />}
+          title="リマインダーがありません"
+          description="「新規リマインダー」から最初のリマインダーを作成してください"
+          action={<Button onClick={() => setShowCreate(true)}>新規リマインダー</Button>}
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {reminders.map((reminder) => {
@@ -346,86 +332,66 @@ export default function RemindersPage() {
             return (
               <div
                 key={reminder.id}
-                className={`bg-white rounded-lg shadow-sm border border-gray-200 transition-all ${isExpanded ? 'md:col-span-2 xl:col-span-3' : ''}`}
+                className={`bg-card rounded-lg border border-border transition-all ${isExpanded ? 'md:col-span-2 xl:col-span-3' : ''}`}
               >
-                {/* Card header */}
                 <div
-                  className="p-5 cursor-pointer hover:bg-gray-50 transition-colors"
+                  className="p-5 cursor-pointer hover:bg-accent/50 transition-colors"
                   onClick={() => handleExpand(reminder.id)}
                 >
-                  <div className="flex items-start justify-between">
+                  <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-sm font-semibold text-gray-900 truncate">{reminder.name}</h3>
+                      <h3 className="text-sm font-semibold text-foreground truncate">{reminder.name}</h3>
                       {reminder.description && (
-                        <p className="text-xs text-gray-500 mt-1 line-clamp-2">{reminder.description}</p>
+                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{reminder.description}</p>
                       )}
                     </div>
-                    <span
-                      className={`ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium shrink-0 ${
-                        reminder.isActive
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-gray-100 text-gray-500'
-                      }`}
-                    >
+                    <Badge variant={reminder.isActive ? 'default' : 'secondary'}>
                       {reminder.isActive ? '有効' : '無効'}
-                    </span>
+                    </Badge>
                   </div>
-                  <div className="flex items-center gap-4 mt-3 text-xs text-gray-400">
+                  <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
                     <span>作成日: {new Date(reminder.createdAt).toLocaleDateString('ja-JP')}</span>
-                    <span className="flex items-center gap-1">
-                      {isExpanded ? '▲ 閉じる' : '▼ 詳細'}
-                    </span>
+                    <span>{isExpanded ? '▲ 閉じる' : '▼ 詳細'}</span>
                   </div>
                 </div>
 
-                {/* Expanded detail */}
                 {isExpanded && (
-                  <div className="border-t border-gray-200 p-5">
-                    {/* Actions */}
+                  <div className="border-t border-border p-5">
                     <div className="flex flex-wrap items-center gap-2 mb-4">
-                      <button
+                      <Button
+                        variant="outline"
                         onClick={(e) => { e.stopPropagation(); handleToggleActive(reminder.id, reminder.isActive) }}
-                        className={`px-3 py-1.5 min-h-[44px] text-xs font-medium rounded-md transition-colors ${
-                          reminder.isActive
-                            ? 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                            : 'text-white hover:opacity-90'
-                        }`}
-                        style={!reminder.isActive ? { backgroundColor: '#06C755' } : undefined}
                       >
                         {reminder.isActive ? '無効にする' : '有効にする'}
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleDelete(reminder.id) }}
-                        className="px-3 py-1.5 min-h-[44px] text-xs font-medium text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-md transition-colors"
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        onClick={(e) => { e.stopPropagation(); setConfirmDelete(reminder.id) }}
                       >
                         削除
-                      </button>
+                      </Button>
                     </div>
 
-                    {/* Steps */}
                     {expandLoading ? (
-                      <div className="space-y-2 animate-pulse">
-                        <div className="h-3 bg-gray-200 rounded w-32" />
-                        <div className="h-10 bg-gray-100 rounded" />
-                        <div className="h-10 bg-gray-100 rounded" />
-                      </div>
+                      <LoadingState rows={2} columns={1} />
                     ) : expandedData ? (
                       <div>
                         <div className="flex items-center justify-between mb-3">
-                          <h4 className="text-xs font-semibold text-gray-700">
+                          <h4 className="text-xs font-semibold text-foreground">
                             ステップ ({expandedData.steps.length}件)
                           </h4>
-                          <button
+                          <Button
+                            variant="outline"
                             onClick={() => { setShowStepForm(true); setStepFormError('') }}
-                            className="px-3 py-1 min-h-[44px] text-xs font-medium text-white rounded-md transition-opacity hover:opacity-90"
-                            style={{ backgroundColor: '#06C755' }}
                           >
                             + ステップ追加
-                          </button>
+                          </Button>
                         </div>
 
                         {expandedData.steps.length === 0 ? (
-                          <p className="text-xs text-gray-400 py-4 text-center">ステップがありません。「ステップ追加」から作成してください。</p>
+                          <p className="text-xs text-muted-foreground py-4 text-center">
+                            ステップがありません。「ステップ追加」から作成してください。
+                          </p>
                         ) : (
                           <div className="space-y-2">
                             {expandedData.steps
@@ -433,24 +399,22 @@ export default function RemindersPage() {
                               .map((step) => (
                                 <div
                                   key={step.id}
-                                  className="flex items-start justify-between bg-gray-50 rounded-lg p-3 border border-gray-100"
+                                  className="flex items-start justify-between bg-muted/50 rounded-lg p-3 border border-border"
                                 >
                                   <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2 mb-1">
-                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">
-                                        {formatOffset(step.offsetMinutes)}
-                                      </span>
-                                      <span className="text-xs text-gray-400">
+                                      <Badge variant="outline">{formatOffset(step.offsetMinutes)}</Badge>
+                                      <span className="text-xs text-muted-foreground">
                                         {messageTypeLabels[step.messageType] ?? step.messageType}
                                       </span>
                                     </div>
-                                    <p className="text-xs text-gray-600 whitespace-pre-wrap break-words line-clamp-3">
+                                    <p className="text-xs text-foreground whitespace-pre-wrap break-words line-clamp-3">
                                       {step.messageContent}
                                     </p>
                                   </div>
                                   <button
-                                    onClick={() => handleDeleteStep(step.id)}
-                                    className="ml-2 shrink-0 min-h-[44px] min-w-[44px] text-xs text-red-400 hover:text-red-600 transition-colors"
+                                    onClick={() => setConfirmDeleteStep(step.id)}
+                                    className="ml-2 shrink-0 min-h-[44px] min-w-[44px] text-xs text-destructive hover:text-destructive/80 transition-colors"
                                   >
                                     削除
                                   </button>
@@ -459,28 +423,27 @@ export default function RemindersPage() {
                           </div>
                         )}
 
-                        {/* Add step form */}
                         {showStepForm && (
-                          <div className="mt-4 bg-white border border-gray-200 rounded-lg p-4">
-                            <h5 className="text-xs font-semibold text-gray-700 mb-3">ステップを追加</h5>
+                          <div className="mt-4 bg-background border border-border rounded-lg p-4">
+                            <h5 className="text-xs font-semibold text-foreground mb-3">ステップを追加</h5>
                             <div className="space-y-3 max-w-lg">
                               <div>
-                                <label className="block text-xs font-medium text-gray-600 mb-1">オフセット (分)</label>
+                                <label className="block text-xs font-medium text-muted-foreground mb-1">オフセット (分)</label>
                                 <input
                                   type="number"
-                                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                                  className={inputClass}
                                   placeholder="例: -60 (1時間前), +30 (30分後)"
                                   value={stepForm.offsetMinutes}
                                   onChange={(e) => setStepForm({ ...stepForm, offsetMinutes: Number(e.target.value) })}
                                 />
-                                <p className="text-xs text-gray-400 mt-1">
+                                <p className="text-xs text-muted-foreground mt-1">
                                   現在の値: {formatOffset(stepForm.offsetMinutes)}
                                 </p>
                               </div>
                               <div>
-                                <label className="block text-xs font-medium text-gray-600 mb-1">メッセージタイプ</label>
+                                <label className="block text-xs font-medium text-muted-foreground mb-1">メッセージタイプ</label>
                                 <select
-                                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
+                                  className={inputClass}
                                   value={stepForm.messageType}
                                   onChange={(e) => setStepForm({ ...stepForm, messageType: e.target.value })}
                                 >
@@ -490,9 +453,11 @@ export default function RemindersPage() {
                                 </select>
                               </div>
                               <div>
-                                <label className="block text-xs font-medium text-gray-600 mb-1">メッセージ内容 <span className="text-red-500">*</span></label>
+                                <label className="block text-xs font-medium text-muted-foreground mb-1">
+                                  メッセージ内容 <span className="text-destructive">*</span>
+                                </label>
                                 <textarea
-                                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
+                                  className={`${inputClass} resize-none`}
                                   rows={3}
                                   placeholder="メッセージ内容を入力"
                                   value={stepForm.messageContent}
@@ -500,23 +465,18 @@ export default function RemindersPage() {
                                 />
                               </div>
 
-                              {stepFormError && <p className="text-xs text-red-600">{stepFormError}</p>}
+                              {stepFormError && <p className="text-xs text-destructive">{stepFormError}</p>}
 
                               <div className="flex gap-2">
-                                <button
-                                  onClick={handleAddStep}
-                                  disabled={stepSaving}
-                                  className="px-4 py-2 min-h-[44px] text-sm font-medium text-white rounded-lg disabled:opacity-50 transition-opacity"
-                                  style={{ backgroundColor: '#06C755' }}
-                                >
+                                <Button onClick={handleAddStep} disabled={stepSaving}>
                                   {stepSaving ? '追加中...' : '追加'}
-                                </button>
-                                <button
+                                </Button>
+                                <Button
+                                  variant="outline"
                                   onClick={() => { setShowStepForm(false); setStepFormError('') }}
-                                  className="px-4 py-2 min-h-[44px] text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
                                 >
                                   キャンセル
-                                </button>
+                                </Button>
                               </div>
                             </div>
                           </div>
@@ -530,6 +490,31 @@ export default function RemindersPage() {
           })}
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setConfirmDelete(null)
+        }}
+        title="リマインダーを削除しますか？"
+        description="この操作は元に戻せません。"
+        confirmLabel="削除する"
+        variant="destructive"
+        onConfirm={() => confirmDelete && handleDelete(confirmDelete)}
+      />
+
+      <ConfirmDialog
+        open={confirmDeleteStep !== null}
+        onOpenChange={(open) => {
+          if (!open) setConfirmDeleteStep(null)
+        }}
+        title="ステップを削除しますか？"
+        description="この操作は元に戻せません。"
+        confirmLabel="削除する"
+        variant="destructive"
+        onConfirm={() => confirmDeleteStep && handleDeleteStep(confirmDeleteStep)}
+      />
+
       <CcPromptButton prompts={ccPrompts} />
     </div>
   )
