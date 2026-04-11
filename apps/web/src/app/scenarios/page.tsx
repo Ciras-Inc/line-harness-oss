@@ -4,9 +4,13 @@ import { useState, useEffect, useCallback } from 'react'
 import type { Scenario, ScenarioTriggerType } from '@line-crm/shared'
 import { api } from '@/lib/api'
 import { useAccount } from '@/contexts/account-context'
-import Header from '@/components/layout/header'
 import ScenarioList from '@/components/scenarios/scenario-list'
 import CcPromptButton from '@/components/cc-prompt-button'
+import { PageHeader } from '@/components/ui/page-header'
+import { Button } from '@/components/ui/button'
+import { LoadingState } from '@/components/ui/loading-state'
+import { EmptyState } from '@/components/ui/empty-state'
+import { GitBranch } from 'lucide-react'
 
 const ccPrompts = [
   {
@@ -35,6 +39,8 @@ const triggerOptions: { value: ScenarioTriggerType; label: string }[] = [
   { value: 'tag_added', label: 'タグ付与時' },
   { value: 'manual', label: '手動' },
 ]
+
+const inputClass = 'w-full border border-border rounded-lg px-3 py-2 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring'
 
 interface CreateFormState {
   name: string
@@ -129,46 +135,44 @@ export default function ScenariosPage() {
   }
 
   return (
-    <div>
-      <Header
+    <div className="py-6">
+      <PageHeader
         title="シナリオ配信"
+        description="友だち追加などのトリガーに応じた自動配信シナリオ"
         action={
-          <button
-            onClick={() => setShowCreate(true)}
-            className="px-4 py-2 min-h-[44px] text-sm font-medium text-white rounded-lg transition-opacity hover:opacity-90"
-            style={{ backgroundColor: '#06C755' }}
-          >
+          <Button onClick={() => setShowCreate(true)}>
             + 新規シナリオ
-          </button>
+          </Button>
         }
       />
 
-      {/* Error */}
       {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+        <div className="mb-4 p-4 bg-destructive/10 border border-destructive/20 rounded-md text-destructive text-sm">
           {error}
         </div>
       )}
 
-      {/* Create form */}
+      {/* 作成フォーム */}
       {showCreate && (
-        <div className="mb-6 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h2 className="text-sm font-semibold text-gray-800 mb-4">新規シナリオを作成</h2>
+        <div className="mb-6 rounded-md border border-border bg-card p-6">
+          <h2 className="text-sm font-semibold text-foreground mb-4">新規シナリオを作成</h2>
           <div className="space-y-4 max-w-lg">
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">シナリオ名 <span className="text-red-500">*</span></label>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">
+                シナリオ名 <span className="text-destructive">*</span>
+              </label>
               <input
                 type="text"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                className={inputClass}
                 placeholder="例: 友だち追加ウェルカムシナリオ"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">説明</label>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">説明</label>
               <textarea
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
+                className={`${inputClass} resize-none`}
                 rows={2}
                 placeholder="シナリオの説明 (省略可)"
                 value={form.description}
@@ -176,9 +180,9 @@ export default function ScenariosPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">トリガー</label>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">トリガー</label>
               <select
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
+                className={inputClass}
                 value={form.triggerType}
                 onChange={(e) => setForm({ ...form, triggerType: e.target.value as ScenarioTriggerType })}
               >
@@ -193,47 +197,37 @@ export default function ScenariosPage() {
                 id="isActive"
                 checked={form.isActive}
                 onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
-                className="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                className="w-4 h-4 rounded border-border accent-primary"
               />
-              <label htmlFor="isActive" className="text-sm text-gray-600">作成後すぐに有効にする</label>
+              <label htmlFor="isActive" className="text-sm text-muted-foreground">作成後すぐに有効にする</label>
             </div>
 
-            {formError && <p className="text-xs text-red-600">{formError}</p>}
+            {formError && <p className="text-xs text-destructive">{formError}</p>}
 
             <div className="flex gap-2">
-              <button
-                onClick={handleCreate}
-                disabled={saving}
-                className="px-4 py-2 min-h-[44px] text-sm font-medium text-white rounded-lg disabled:opacity-50 transition-opacity"
-                style={{ backgroundColor: '#06C755' }}
-              >
+              <Button onClick={handleCreate} disabled={saving}>
                 {saving ? '作成中...' : '作成'}
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="outline"
                 onClick={() => { setShowCreate(false); setFormError('') }}
-                className="px-4 py-2 min-h-[44px] text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
               >
                 キャンセル
-              </button>
+              </Button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Loading skeleton */}
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="bg-white rounded-lg border border-gray-200 p-5 animate-pulse space-y-3">
-              <div className="h-4 bg-gray-200 rounded w-3/4" />
-              <div className="h-3 bg-gray-100 rounded w-full" />
-              <div className="flex gap-4">
-                <div className="h-3 bg-gray-100 rounded w-24" />
-                <div className="h-3 bg-gray-100 rounded w-16" />
-              </div>
-            </div>
-          ))}
-        </div>
+        <LoadingState rows={3} columns={3} />
+      ) : scenarios.length === 0 && !showCreate ? (
+        <EmptyState
+          icon={<GitBranch size={32} />}
+          title="シナリオがありません"
+          description="「新規シナリオ」から最初のシナリオを作成してください"
+          action={<Button onClick={() => setShowCreate(true)}>新規シナリオ</Button>}
+        />
       ) : (
         <ScenarioList
           scenarios={scenarios}

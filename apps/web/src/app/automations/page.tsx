@@ -3,13 +3,25 @@
 import { useState, useEffect, useCallback } from 'react'
 import { api } from '@/lib/api'
 import { useAccount } from '@/contexts/account-context'
-import Header from '@/components/layout/header'
+import { PageHeader } from '@/components/ui/page-header'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { LoadingState } from '@/components/ui/loading-state'
+import { EmptyState } from '@/components/ui/empty-state'
 import CcPromptButton from '@/components/cc-prompt-button'
+import { Zap } from 'lucide-react'
 
-type AutomationEventType = "friend_add" | "tag_change" | "score_threshold" | "cv_fire" | "message_received" | "calendar_booked"
+type AutomationEventType =
+  | 'friend_add'
+  | 'tag_change'
+  | 'score_threshold'
+  | 'cv_fire'
+  | 'message_received'
+  | 'calendar_booked'
 
 interface AutomationAction {
-  type: "add_tag" | "remove_tag" | "start_scenario" | "send_message" | "send_webhook" | "switch_rich_menu"
+  type: 'add_tag' | 'remove_tag' | 'start_scenario' | 'send_message' | 'send_webhook' | 'switch_rich_menu'
   params: Record<string, unknown>
 }
 
@@ -44,15 +56,6 @@ const eventTypeLabelMap: Record<AutomationEventType, string> = {
   calendar_booked: 'カレンダー予約',
 }
 
-const eventTypeBadgeColor: Record<AutomationEventType, string> = {
-  friend_add: 'bg-green-100 text-green-700',
-  tag_change: 'bg-blue-100 text-blue-700',
-  score_threshold: 'bg-yellow-100 text-yellow-700',
-  cv_fire: 'bg-red-100 text-red-700',
-  message_received: 'bg-purple-100 text-purple-700',
-  calendar_booked: 'bg-indigo-100 text-indigo-700',
-}
-
 interface CreateFormState {
   name: string
   description: string
@@ -70,6 +73,9 @@ const initialForm: CreateFormState = {
   conditionsJson: '{}',
   priority: 0,
 }
+
+const inputClass =
+  'w-full border border-border rounded-lg px-3 py-2 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring'
 
 const ccPrompts = [
   {
@@ -99,6 +105,7 @@ export default function AutomationsPage() {
   const [form, setForm] = useState<CreateFormState>({ ...initialForm })
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
 
   const loadAutomations = useCallback(async () => {
     setLoading(true)
@@ -177,7 +184,6 @@ export default function AutomationsPage() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('このオートメーションを削除してもよいですか？')) return
     try {
       await api.automations.delete(id)
       loadAutomations()
@@ -187,46 +193,39 @@ export default function AutomationsPage() {
   }
 
   return (
-    <div>
-      <Header
+    <div className="py-6">
+      <PageHeader
         title="オートメーション"
-        action={
-          <button
-            onClick={() => setShowCreate(true)}
-            className="px-4 py-2 min-h-[44px] text-sm font-medium text-white rounded-lg transition-opacity hover:opacity-90"
-            style={{ backgroundColor: '#06C755' }}
-          >
-            + 新規ルール
-          </button>
-        }
+        description="イベントトリガーによる自動処理ルール"
+        action={<Button onClick={() => setShowCreate(true)}>+ 新規ルール</Button>}
       />
 
-      {/* Error */}
       {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+        <div className="mb-4 p-4 bg-destructive/10 border border-destructive/20 rounded-md text-destructive text-sm">
           {error}
         </div>
       )}
 
-      {/* Create form */}
       {showCreate && (
-        <div className="mb-6 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h2 className="text-sm font-semibold text-gray-800 mb-4">新規オートメーションを作成</h2>
+        <div className="mb-6 rounded-md border border-border bg-card p-6">
+          <h2 className="text-sm font-semibold text-foreground mb-4">新規オートメーションを作成</h2>
           <div className="space-y-4 max-w-lg">
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">ルール名 <span className="text-red-500">*</span></label>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">
+                ルール名 <span className="text-destructive">*</span>
+              </label>
               <input
                 type="text"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                className={inputClass}
                 placeholder="例: 友だち追加時にウェルカムタグ付与"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">説明</label>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">説明</label>
               <textarea
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
+                className={`${inputClass} resize-none`}
                 rows={2}
                 placeholder="ルールの説明 (省略可)"
                 value={form.description}
@@ -234,21 +233,29 @@ export default function AutomationsPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">イベントタイプ</label>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">
+                イベントタイプ
+              </label>
               <select
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
+                className={inputClass}
                 value={form.eventType}
-                onChange={(e) => setForm({ ...form, eventType: e.target.value as AutomationEventType })}
+                onChange={(e) =>
+                  setForm({ ...form, eventType: e.target.value as AutomationEventType })
+                }
               >
                 {eventTypeOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">アクション (JSON)</label>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">
+                アクション (JSON)
+              </label>
               <textarea
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-green-500 resize-y"
+                className={`${inputClass} resize-y font-mono`}
                 rows={6}
                 placeholder='[{"type": "add_tag", "params": {"tagId": "..."}}]'
                 value={form.actionsJson}
@@ -256,9 +263,11 @@ export default function AutomationsPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">条件 (JSON)</label>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">
+                条件 (JSON)
+              </label>
               <textarea
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-green-500 resize-y"
+                className={`${inputClass} resize-y font-mono`}
                 rows={3}
                 placeholder='{"tagId": "...", "operator": "equals"}'
                 value={form.conditionsJson}
@@ -266,108 +275,87 @@ export default function AutomationsPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">優先度</label>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">優先度</label>
               <input
                 type="number"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                className={inputClass}
                 value={form.priority}
                 onChange={(e) => setForm({ ...form, priority: parseInt(e.target.value, 10) || 0 })}
               />
             </div>
 
-            {formError && <p className="text-xs text-red-600">{formError}</p>}
+            {formError && <p className="text-xs text-destructive">{formError}</p>}
 
             <div className="flex gap-2">
-              <button
-                onClick={handleCreate}
-                disabled={saving}
-                className="px-4 py-2 min-h-[44px] text-sm font-medium text-white rounded-lg disabled:opacity-50 transition-opacity"
-                style={{ backgroundColor: '#06C755' }}
-              >
+              <Button onClick={handleCreate} disabled={saving}>
                 {saving ? '作成中...' : '作成'}
-              </button>
-              <button
-                onClick={() => { setShowCreate(false); setFormError('') }}
-                className="px-4 py-2 min-h-[44px] text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowCreate(false)
+                  setFormError('')
+                }}
               >
                 キャンセル
-              </button>
+              </Button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Loading skeleton */}
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="bg-white rounded-lg border border-gray-200 p-5 animate-pulse space-y-3">
-              <div className="h-4 bg-gray-200 rounded w-3/4" />
-              <div className="h-3 bg-gray-100 rounded w-full" />
-              <div className="flex gap-4">
-                <div className="h-3 bg-gray-100 rounded w-24" />
-                <div className="h-3 bg-gray-100 rounded w-16" />
-              </div>
-            </div>
-          ))}
-        </div>
+        <LoadingState rows={3} columns={3} />
       ) : automations.length === 0 && !showCreate ? (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
-          <p className="text-gray-500">オートメーションがありません。「新規ルール」から作成してください。</p>
-        </div>
+        <EmptyState
+          icon={<Zap size={32} />}
+          title="オートメーションがありません"
+          description="「新規ルール」から最初のオートメーションを作成してください"
+          action={<Button onClick={() => setShowCreate(true)}>新規ルール</Button>}
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {automations.map((automation) => (
             <div
               key={automation.id}
-              className="bg-white rounded-lg shadow-sm border border-gray-200 p-5 hover:shadow-md transition-shadow"
+              className="bg-card rounded-lg border border-border p-5 flex flex-col gap-3 hover:shadow-sm transition-shadow"
             >
-              {/* Header row */}
-              <div className="flex items-start justify-between mb-2">
-                <h3 className="text-sm font-semibold text-gray-900 leading-tight">{automation.name}</h3>
-                <button
-                  onClick={() => handleToggleActive(automation.id, automation.isActive)}
-                  className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                    automation.isActive ? 'bg-green-500' : 'bg-gray-300'
-                  }`}
-                  title={automation.isActive ? '有効 - クリックで無効化' : '無効 - クリックで有効化'}
-                >
-                  <span
-                    className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                      automation.isActive ? 'translate-x-4' : 'translate-x-0'
-                    }`}
-                  />
-                </button>
+              <div className="flex items-start justify-between gap-2">
+                <h3 className="text-sm font-semibold text-foreground leading-tight">
+                  {automation.name}
+                </h3>
+                <Badge variant={automation.isActive ? 'default' : 'secondary'}>
+                  {automation.isActive ? '有効' : '無効'}
+                </Badge>
               </div>
 
-              {/* Description */}
               {automation.description && (
-                <p className="text-xs text-gray-500 mb-3 line-clamp-2">{automation.description}</p>
+                <p className="text-xs text-muted-foreground line-clamp-2">
+                  {automation.description}
+                </p>
               )}
 
-              {/* Event type badge */}
-              <div className="flex items-center gap-2 mb-3">
-                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${eventTypeBadgeColor[automation.eventType]}`}>
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="outline">
                   {eventTypeLabelMap[automation.eventType]}
-                </span>
-                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                  automation.isActive ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'
-                }`}>
-                  {automation.isActive ? '有効' : '無効'}
-                </span>
+                </Badge>
               </div>
 
-              {/* Meta info */}
-              <div className="flex items-center gap-4 text-xs text-gray-400 mb-3">
+              <div className="flex items-center gap-4 text-xs text-muted-foreground">
                 <span>アクション: {automation.actions.length}件</span>
                 <span>優先度: {automation.priority}</span>
               </div>
 
-              {/* Actions */}
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100">
+              <div className="flex items-center gap-2 pt-1 border-t border-border">
                 <button
-                  onClick={() => handleDelete(automation.id)}
-                  className="px-3 py-1 min-h-[44px] text-xs font-medium text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-md transition-colors"
+                  onClick={() => handleToggleActive(automation.id, automation.isActive)}
+                  className="flex-1 text-xs font-medium text-muted-foreground py-1 min-h-[44px] flex items-center justify-center rounded-md hover:bg-accent transition-colors"
+                >
+                  {automation.isActive ? '無効にする' : '有効にする'}
+                </button>
+                <button
+                  onClick={() => setConfirmDelete(automation.id)}
+                  className="flex-1 text-xs font-medium text-destructive py-1 min-h-[44px] flex items-center justify-center rounded-md hover:bg-destructive/10 transition-colors"
                 >
                   削除
                 </button>
@@ -376,6 +364,19 @@ export default function AutomationsPage() {
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setConfirmDelete(null)
+        }}
+        title="オートメーションを削除しますか？"
+        description="この操作は元に戻せません。"
+        confirmLabel="削除する"
+        variant="destructive"
+        onConfirm={() => confirmDelete && handleDelete(confirmDelete)}
+      />
+
       <CcPromptButton prompts={ccPrompts} />
     </div>
   )
