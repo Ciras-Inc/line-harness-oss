@@ -4,9 +4,23 @@ import { useState, useEffect, useCallback } from 'react'
 import type { Tag } from '@line-crm/shared'
 import { api, type ApiBroadcast, type BroadcastInsight } from '@/lib/api'
 import { useAccount } from '@/contexts/account-context'
-import Header from '@/components/layout/header'
 import BroadcastForm from '@/components/broadcasts/broadcast-form'
 import CcPromptButton from '@/components/cc-prompt-button'
+import { PageHeader } from '@/components/ui/page-header'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { LoadingState } from '@/components/ui/loading-state'
+import { EmptyState } from '@/components/ui/empty-state'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { Megaphone } from 'lucide-react'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 
 const ccPrompts = [
   {
@@ -27,14 +41,11 @@ const ccPrompts = [
   },
 ]
 
-const statusConfig: Record<
-  ApiBroadcast['status'],
-  { label: string; className: string }
-> = {
-  draft: { label: '下書き', className: 'bg-gray-100 text-gray-600' },
-  scheduled: { label: '予約済み', className: 'bg-blue-100 text-blue-700' },
-  sending: { label: '送信中', className: 'bg-yellow-100 text-yellow-700' },
-  sent: { label: '送信完了', className: 'bg-green-100 text-green-700' },
+const statusBadge: Record<ApiBroadcast['status'], { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive' }> = {
+  draft: { label: '下書き', variant: 'secondary' },
+  scheduled: { label: '予約済み', variant: 'outline' },
+  sending: { label: '送信中', variant: 'default' },
+  sent: { label: '送信完了', variant: 'default' },
 }
 
 function formatDatetime(iso: string | null): string {
@@ -58,6 +69,8 @@ export default function BroadcastsPage() {
   const [sendingId, setSendingId] = useState<string | null>(null)
   const [insights, setInsights] = useState<Record<string, BroadcastInsight>>({})
   const [fetchingInsight, setFetchingInsight] = useState<string | null>(null)
+  const [confirmSend, setConfirmSend] = useState<string | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
 
   const loadInsight = async (id: string) => {
     try {
@@ -102,13 +115,11 @@ export default function BroadcastsPage() {
 
   useEffect(() => { load() }, [load])
 
-  // 送信済みbroadcastのinsightを読み込み
   useEffect(() => {
     broadcasts.filter(b => b.status === 'sent').forEach(b => loadInsight(b.id))
   }, [broadcasts])
 
   const handleSend = async (id: string) => {
-    if (!confirm('この配信を今すぐ送信してもよいですか？')) return
     setSendingId(id)
     try {
       await api.broadcasts.send(id)
@@ -117,16 +128,18 @@ export default function BroadcastsPage() {
       setError('送信に失敗しました')
     } finally {
       setSendingId(null)
+      setConfirmSend(null)
     }
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('この配信を削除してもよいですか？')) return
     try {
       await api.broadcasts.delete(id)
       load()
     } catch {
       setError('削除に失敗しました')
+    } finally {
+      setConfirmDelete(null)
     }
   }
 
@@ -136,129 +149,91 @@ export default function BroadcastsPage() {
   }
 
   return (
-    <div>
-      <Header
+    <div className="py-6">
+      <PageHeader
         title="一斉配信"
+        description="友だちへのメッセージ一斉送信・予約管理"
         action={
-          <button
-            onClick={() => setShowCreate(true)}
-            className="px-4 py-2 text-sm font-medium text-white rounded-lg transition-opacity hover:opacity-90"
-            style={{ backgroundColor: '#06C755' }}
-          >
-            + 新規配信
-          </button>
+          <Button onClick={() => setShowCreate(true)}>
+            + 新規配信作成
+          </Button>
         }
       />
 
-      {/* Error */}
       {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+        <div className="mb-4 p-4 bg-destructive/10 border border-destructive/20 rounded-md text-destructive text-sm">
           {error}
         </div>
       )}
 
-      {/* Create form */}
+      {/* 作成フォーム */}
       {showCreate && (
-        <BroadcastForm
-          tags={tags}
-          onSuccess={() => { setShowCreate(false); load() }}
-          onCancel={() => setShowCreate(false)}
-        />
+        <div className="mb-6">
+          <BroadcastForm
+            tags={tags}
+            onSuccess={() => { setShowCreate(false); load() }}
+            onCancel={() => setShowCreate(false)}
+          />
+        </div>
       )}
 
-      {/* Loading */}
       {loading ? (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="px-4 py-4 border-b border-gray-100 flex items-center gap-4 animate-pulse">
-              <div className="flex-1 space-y-2">
-                <div className="h-3 bg-gray-200 rounded w-48" />
-                <div className="h-2 bg-gray-100 rounded w-32" />
-              </div>
-              <div className="h-5 bg-gray-100 rounded-full w-16" />
-              <div className="h-3 bg-gray-100 rounded w-24" />
-            </div>
-          ))}
-        </div>
+        <LoadingState rows={4} columns={5} />
       ) : broadcasts.length === 0 && !showCreate ? (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
-          <p className="text-gray-500">配信がありません。「新規配信」から作成してください。</p>
-        </div>
+        <EmptyState
+          icon={<Megaphone size={32} />}
+          title="配信がありません"
+          description="「新規配信作成」から最初の配信を作成してください"
+          action={<Button onClick={() => setShowCreate(true)}>新規配信作成</Button>}
+        />
       ) : (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px]">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-200">
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  配信タイトル
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  ステータス
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  配信対象
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  予約日時
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  送信完了日時
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  実績
-                </th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
+        <div className="rounded-md border border-border overflow-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>配信タイトル</TableHead>
+                <TableHead>ステータス</TableHead>
+                <TableHead>配信対象</TableHead>
+                <TableHead>予約日時</TableHead>
+                <TableHead>送信完了日時</TableHead>
+                <TableHead>実績</TableHead>
+                <TableHead className="text-right">操作</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {broadcasts.map((broadcast) => {
-                const statusInfo = statusConfig[broadcast.status]
+                const { label, variant } = statusBadge[broadcast.status]
                 const tagName = getTagName(broadcast.targetTagId)
                 const isSending = sendingId === broadcast.id
 
                 return (
-                  <tr key={broadcast.id} className="hover:bg-gray-50 transition-colors">
-                    {/* Title */}
-                    <td className="px-4 py-3">
+                  <TableRow key={broadcast.id}>
+                    <TableCell>
                       <div>
-                        <p className="text-sm font-medium text-gray-900">{broadcast.title}</p>
-                        <p className="text-xs text-gray-400 mt-0.5">
+                        <p className="text-sm font-medium">{broadcast.title}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
                           {broadcast.messageType === 'text' ? 'テキスト' : broadcast.messageType === 'image' ? '画像' : 'Flex'}
                         </p>
                       </div>
-                    </td>
+                    </TableCell>
 
-                    {/* Status */}
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${statusInfo.className}`}>
-                        {statusInfo.label}
-                      </span>
-                    </td>
+                    <TableCell>
+                      <Badge variant={variant}>{label}</Badge>
+                    </TableCell>
 
-                    {/* Target */}
-                    <td className="px-4 py-3 text-sm text-gray-600">
-                      {broadcast.targetType === 'all' ? (
-                        '全員'
-                      ) : tagName ? (
-                        <span>タグ: {tagName}</span>
-                      ) : (
-                        'タグ指定'
-                      )}
-                    </td>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {broadcast.targetType === 'all' ? '全員' : tagName ? `タグ: ${tagName}` : 'タグ指定'}
+                    </TableCell>
 
-                    {/* Scheduled */}
-                    <td className="px-4 py-3 text-sm text-gray-500">
+                    <TableCell className="text-sm text-muted-foreground">
                       {formatDatetime(broadcast.scheduledAt)}
-                    </td>
+                    </TableCell>
 
-                    {/* Sent */}
-                    <td className="px-4 py-3 text-sm text-gray-500">
+                    <TableCell className="text-sm text-muted-foreground">
                       {formatDatetime(broadcast.sentAt)}
-                    </td>
+                    </TableCell>
 
-                    {/* Stats & Insight */}
-                    <td className="px-4 py-3 text-sm text-gray-500">
+                    <TableCell className="text-sm text-muted-foreground">
                       {broadcast.status === 'sent' ? (
                         <div>
                           {broadcast.totalCount > 0 && (
@@ -267,19 +242,19 @@ export default function BroadcastsPage() {
                           {insights[broadcast.id] ? (
                             <div className="mt-1 space-y-0.5">
                               {insights[broadcast.id].delivered != null && (
-                                <p className="text-xs">配信: <span className="font-medium text-gray-700">{insights[broadcast.id].delivered!.toLocaleString('ja-JP')}</span></p>
+                                <p className="text-xs">配信: <span className="font-medium text-foreground">{insights[broadcast.id].delivered!.toLocaleString('ja-JP')}</span></p>
                               )}
                               {insights[broadcast.id].uniqueImpression != null && (
-                                <p className="text-xs">開封: <span className="font-medium text-blue-600">{insights[broadcast.id].uniqueImpression!.toLocaleString('ja-JP')}</span>
+                                <p className="text-xs">開封: <span className="font-medium text-primary">{insights[broadcast.id].uniqueImpression!.toLocaleString('ja-JP')}</span>
                                   {insights[broadcast.id].openRate != null && (
-                                    <span className="text-gray-400"> ({(insights[broadcast.id].openRate! * 100).toFixed(1)}%)</span>
+                                    <span className="text-muted-foreground"> ({(insights[broadcast.id].openRate! * 100).toFixed(1)}%)</span>
                                   )}
                                 </p>
                               )}
                               {insights[broadcast.id].uniqueClick != null && (
-                                <p className="text-xs">クリック: <span className="font-medium text-green-600">{insights[broadcast.id].uniqueClick!.toLocaleString('ja-JP')}</span>
+                                <p className="text-xs">クリック: <span className="font-medium text-primary">{insights[broadcast.id].uniqueClick!.toLocaleString('ja-JP')}</span>
                                   {insights[broadcast.id].clickRate != null && (
-                                    <span className="text-gray-400"> ({(insights[broadcast.id].clickRate! * 100).toFixed(1)}%)</span>
+                                    <span className="text-muted-foreground"> ({(insights[broadcast.id].clickRate! * 100).toFixed(1)}%)</span>
                                   )}
                                 </p>
                               )}
@@ -288,48 +263,68 @@ export default function BroadcastsPage() {
                             <button
                               onClick={() => handleFetchInsight(broadcast.id)}
                               disabled={fetchingInsight === broadcast.id}
-                              className="mt-1 text-xs text-blue-500 hover:text-blue-700 disabled:opacity-50"
+                              className="mt-1 text-xs text-primary hover:underline disabled:opacity-50"
                             >
                               {fetchingInsight === broadcast.id ? '取得中...' : 'インサイトを取得'}
                             </button>
                           )}
                         </div>
-                      ) : (
-                        '-'
-                      )}
-                    </td>
+                      ) : '-'}
+                    </TableCell>
 
-                    {/* Actions */}
-                    <td className="px-4 py-3 text-right">
+                    <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
                         {broadcast.status === 'draft' && (
-                          <button
-                            onClick={() => handleSend(broadcast.id)}
+                          <Button
+                            size="sm"
+                            variant="default"
+                            onClick={() => setConfirmSend(broadcast.id)}
                             disabled={isSending}
-                            className="px-3 py-1 min-h-[44px] text-xs font-medium text-white rounded-md disabled:opacity-50 transition-opacity"
-                            style={{ backgroundColor: '#06C755' }}
                           >
                             {isSending ? '送信中...' : '今すぐ送信'}
-                          </button>
+                          </Button>
                         )}
                         {(broadcast.status === 'draft' || broadcast.status === 'scheduled') && (
-                          <button
-                            onClick={() => handleDelete(broadcast.id)}
-                            className="px-3 py-1 min-h-[44px] text-xs font-medium text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-md transition-colors"
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => setConfirmDelete(broadcast.id)}
                           >
                             削除
-                          </button>
+                          </Button>
                         )}
                       </div>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 )
               })}
-            </tbody>
-          </table>
-          </div>
+            </TableBody>
+          </Table>
         </div>
       )}
+
+      {/* 送信確認 */}
+      <ConfirmDialog
+        open={confirmSend !== null}
+        onOpenChange={(open) => { if (!open) setConfirmSend(null) }}
+        title="今すぐ送信しますか？"
+        description="この配信を今すぐ全対象者に送信します。送信後は取り消せません。"
+        confirmLabel="送信する"
+        variant="default"
+        onConfirm={() => confirmSend && handleSend(confirmSend)}
+        loading={sendingId !== null}
+      />
+
+      {/* 削除確認 */}
+      <ConfirmDialog
+        open={confirmDelete !== null}
+        onOpenChange={(open) => { if (!open) setConfirmDelete(null) }}
+        title="配信を削除しますか？"
+        description="この操作は元に戻せません。"
+        confirmLabel="削除する"
+        variant="destructive"
+        onConfirm={() => confirmDelete && handleDelete(confirmDelete)}
+      />
 
       <CcPromptButton prompts={ccPrompts} />
     </div>

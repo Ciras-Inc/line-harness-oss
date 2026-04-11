@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { api, fetchApi } from '@/lib/api'
 import { useAccount } from '@/contexts/account-context'
-import Header from '@/components/layout/header'
+import { PageHeader } from '@/components/ui/page-header'
 import CcPromptButton from '@/components/cc-prompt-button'
 import FlexPreviewComponent from '@/components/flex-preview'
 
@@ -172,7 +172,7 @@ function DirectMessagePanel({ friendId, friend, onBack, onSent }: {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="px-4 py-4 border-b border-gray-200 flex items-center gap-3">
+      <div className="px-4 py-4 border-b border-border flex items-center gap-3">
         <button onClick={onBack} className="lg:hidden text-gray-400 hover:text-gray-600">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -200,11 +200,11 @@ function DirectMessagePanel({ friendId, friend, onBack, onSent }: {
             <div key={msg.id} className={`flex ${msg.direction === 'outgoing' ? 'justify-end' : 'justify-start'}`}>
               <div className={`max-w-[75%] rounded-2xl px-4 py-2 ${
                 msg.direction === 'outgoing'
-                  ? 'bg-green-500 text-white'
-                  : 'bg-gray-100 text-gray-900'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-foreground'
               }`}>
                 <p className="text-sm whitespace-pre-wrap break-words">{renderContent(msg)}</p>
-                <p className={`text-xs mt-1 ${msg.direction === 'outgoing' ? 'text-green-200' : 'text-gray-400'}`}>
+                <p className={`text-xs mt-1 ${msg.direction === 'outgoing' ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
                   {new Date(msg.createdAt).toLocaleString('ja-JP', { hour: '2-digit', minute: '2-digit' })}
                 </p>
               </div>
@@ -212,7 +212,7 @@ function DirectMessagePanel({ friendId, friend, onBack, onSent }: {
           ))
         )}
       </div>
-      <div className="px-4 py-3 border-t border-gray-200">
+      <div className="px-4 py-3 border-t border-border">
         <div className="flex gap-2">
           <input
             type="text"
@@ -220,13 +220,12 @@ function DirectMessagePanel({ friendId, friend, onBack, onSent }: {
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
             placeholder="メッセージを入力..."
-            className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+            className="flex-1 border border-border rounded-lg px-3 py-2 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
           />
           <button
             onClick={handleSend}
             disabled={!message.trim() || sending}
-            className="px-4 py-2 rounded-lg text-white text-sm font-medium disabled:opacity-50"
-            style={{ backgroundColor: '#06C755' }}
+            className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium disabled:opacity-50"
           >
             {sending ? '...' : '送信'}
           </button>
@@ -404,30 +403,29 @@ export default function ChatsPage() {
 
   return (
     <div>
-      <Header title="オペレーターチャット" />
+      <PageHeader title="オペレーターチャット" description="友だちとのチャット管理" />
 
       {/* Error */}
       {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+        <div className="mb-4 p-4 bg-destructive/10 border border-destructive/20 rounded-md text-destructive text-sm">
           {error}
         </div>
       )}
 
       <div className="flex gap-4 h-[calc(100vh-120px)] lg:h-[calc(100vh-180px)]">
         {/* Left Panel: Chat List */}
-        <div className={`w-full lg:w-96 lg:flex-shrink-0 bg-white rounded-lg shadow-sm border border-gray-200 flex-col overflow-hidden ${selectedChatId ? 'hidden lg:flex' : 'flex'}`}>
+        <div className={`w-full lg:w-96 lg:flex-shrink-0 bg-card rounded-lg border border-border flex-col overflow-hidden ${selectedChatId ? 'hidden lg:flex' : 'flex'}`}>
           {/* Status Filter Tabs */}
-          <div className="flex border-b border-gray-200">
+          <div className="flex border-b border-border">
             {statusFilters.map((filter) => (
               <button
                 key={filter.key}
                 onClick={() => { setStatusFilter(filter.key); setSelectedChatId(null) }}
                 className={`flex-1 px-3 py-2.5 min-h-[44px] text-xs font-medium transition-colors ${
                   statusFilter === filter.key
-                    ? 'text-white'
-                    : 'text-gray-600 hover:bg-gray-50'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:bg-accent'
                 }`}
-                style={statusFilter === filter.key ? { backgroundColor: '#06C755' } : undefined}
               >
                 {filter.label}
               </button>
@@ -439,7 +437,7 @@ export default function ChatsPage() {
             {loading ? (
               <div>
                 {[...Array(5)].map((_, i) => (
-                  <div key={i} className="px-4 py-3 border-b border-gray-100 animate-pulse">
+                  <div key={i} className="px-4 py-3 border-b border-border animate-pulse">
                     <div className="flex items-center gap-3">
                       <div className="flex-1 space-y-2">
                         <div className="h-3 bg-gray-200 rounded w-32" />
@@ -459,8 +457,8 @@ export default function ChatsPage() {
                     <button
                       key={chat.id}
                       onClick={() => { setSelectedFriendId(null); handleSelectChat(chat.id); }}
-                      className={`w-full text-left px-4 py-3 border-b border-gray-100 transition-colors ${
-                        isSelected && !selectedFriendId ? 'bg-green-50' : 'hover:bg-gray-50'
+                      className={`w-full text-left px-4 py-3 border-b border-border transition-colors ${
+                        isSelected && !selectedFriendId ? 'bg-accent' : 'hover:bg-accent/50'
                       }`}
                     >
                       <div className="flex items-center gap-3">
@@ -488,7 +486,7 @@ export default function ChatsPage() {
         </div>
 
         {/* Right Panel: Chat Detail */}
-        <div className={`flex-1 bg-white rounded-lg shadow-sm border border-gray-200 flex-col overflow-hidden ${selectedChatId || selectedFriendId ? 'flex' : 'hidden lg:flex'}`}>
+        <div className={`flex-1 bg-card rounded-lg border border-border flex-col overflow-hidden ${selectedChatId || selectedFriendId ? 'flex' : 'hidden lg:flex'}`}>
           {selectedFriendId && !selectedChatId ? (
             /* Direct message to friend without existing chat */
             <DirectMessagePanel
@@ -508,7 +506,7 @@ export default function ChatsPage() {
           ) : chatDetail ? (
             <>
               {/* Chat Header */}
-              <div className="px-4 py-4 border-b border-gray-200 flex items-center justify-between gap-2">
+              <div className="px-4 py-4 border-b border-border flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
                   <button
                     onClick={() => setSelectedChatId(null)}
@@ -611,10 +609,9 @@ export default function ChatsPage() {
                           <div
                             className={`max-w-[320px] px-3 py-2 text-sm break-words whitespace-pre-wrap ${
                               isOutgoing
-                                ? 'rounded-tl-2xl rounded-tr-md rounded-bl-2xl rounded-br-2xl text-white'
+                                ? 'rounded-tl-2xl rounded-tr-md rounded-bl-2xl rounded-br-2xl bg-primary text-primary-foreground'
                                 : 'rounded-tl-md rounded-tr-2xl rounded-bl-2xl rounded-br-2xl bg-white text-gray-900'
                             }`}
-                            style={isOutgoing ? { backgroundColor: '#06C755' } : undefined}
                           >
                             {bubbleContent}
                           </div>
@@ -630,14 +627,14 @@ export default function ChatsPage() {
               </div>
 
               {/* Notes */}
-              <div className="px-4 py-2 border-t border-gray-200 bg-gray-50">
+              <div className="px-4 py-2 border-t border-border bg-muted/30">
                 <div className="flex items-center gap-2">
                   <input
                     type="text"
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     placeholder="メモを入力..."
-                    className="flex-1 text-xs border border-gray-300 rounded-md px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-green-500"
+                    className="flex-1 text-xs border border-border rounded-md px-2 py-1 bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                   />
                   <button
                     onClick={handleSaveNotes}
@@ -650,14 +647,14 @@ export default function ChatsPage() {
               </div>
 
               {/* Send Message Form */}
-              <div className="px-4 py-3 border-t border-gray-200">
+              <div className="px-4 py-3 border-t border-border">
                 <div className="mb-2 flex items-center gap-3 text-xs text-gray-600">
                   <label className="inline-flex items-center gap-2 cursor-pointer select-none">
                     <input
                       type="checkbox"
                       checked={showLoadingIndicator}
                       onChange={(e) => setShowLoadingIndicator(e.target.checked)}
-                      className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                      className="h-4 w-4 rounded border-border accent-primary"
                     />
                     入力中ローディングを表示
                   </label>
@@ -665,7 +662,7 @@ export default function ChatsPage() {
                     value={loadingSeconds}
                     onChange={(e) => setLoadingSeconds(Number.parseInt(e.target.value, 10))}
                     disabled={!showLoadingIndicator}
-                    className="border border-gray-300 rounded-md px-2 py-1 bg-white disabled:bg-gray-100 disabled:text-gray-400"
+                    className="border border-border rounded-md px-2 py-1 bg-background text-foreground disabled:bg-muted disabled:text-muted-foreground"
                   >
                     {[5, 10, 15, 20, 30, 45, 60].map((sec) => (
                       <option key={sec} value={sec}>{sec}秒</option>
@@ -692,13 +689,12 @@ export default function ChatsPage() {
                     onBlur={() => setIsMessageInputFocused(false)}
                     onKeyDown={handleKeyDown}
                     placeholder="メッセージを入力..."
-                    className="flex-1 text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-green-500"
+                    className="flex-1 text-sm border border-border rounded-lg px-3 py-2 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   />
                   <button
                     onClick={handleSendMessage}
                     disabled={sending || !messageContent.trim()}
-                    className="px-4 py-2 text-sm font-medium text-white rounded-lg transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-                    style={{ backgroundColor: '#06C755' }}
+                    className="px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {sending ? '送信中...' : '送信'}
                   </button>

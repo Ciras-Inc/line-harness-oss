@@ -2,8 +2,29 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { api } from '@/lib/api'
-import Header from '@/components/layout/header'
 import CcPromptButton from '@/components/cc-prompt-button'
+import { PageHeader } from '@/components/ui/page-header'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { LoadingState } from '@/components/ui/loading-state'
+import { EmptyState } from '@/components/ui/empty-state'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { LayoutTemplate } from 'lucide-react'
 
 interface Template {
   id: string
@@ -28,7 +49,6 @@ interface FormState {
   messageContent: string
 }
 
-// 後方互換のため型エイリアスを保持
 type CreateFormState = FormState
 
 function formatDate(iso: string): string {
@@ -60,6 +80,8 @@ const ccPrompts = [
   },
 ]
 
+const inputClass = 'w-full border border-border rounded-lg px-3 py-2 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring'
+
 export default function TemplatesPage() {
   const [templates, setTemplates] = useState<Template[]>([])
   const [loading, setLoading] = useState(true)
@@ -78,6 +100,7 @@ export default function TemplatesPage() {
   const [editForm, setEditForm] = useState<FormState>({ name: '', category: '', messageType: 'text', messageContent: '' })
   const [editSaving, setEditSaving] = useState(false)
   const [editError, setEditError] = useState('')
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -107,18 +130,9 @@ export default function TemplatesPage() {
   )
 
   const handleCreate = async () => {
-    if (!form.name.trim()) {
-      setFormError('テンプレート名を入力してください')
-      return
-    }
-    if (!form.category.trim()) {
-      setFormError('カテゴリを入力してください')
-      return
-    }
-    if (!form.messageContent.trim()) {
-      setFormError('メッセージ内容を入力してください')
-      return
-    }
+    if (!form.name.trim()) { setFormError('テンプレート名を入力してください'); return }
+    if (!form.category.trim()) { setFormError('カテゴリを入力してください'); return }
+    if (!form.messageContent.trim()) { setFormError('メッセージ内容を入力してください'); return }
     setSaving(true)
     setFormError('')
     try {
@@ -181,125 +195,123 @@ export default function TemplatesPage() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('このテンプレートを削除してもよいですか？')) return
     try {
       await api.templates.delete(id)
       load()
     } catch {
       setError('削除に失敗しました')
+    } finally {
+      setConfirmDelete(null)
     }
   }
 
   return (
-    <div>
-      <Header
+    <div className="py-6">
+      <PageHeader
         title="テンプレート管理"
+        description="メッセージテンプレートの作成・編集"
         action={
-          <button
-            onClick={() => setShowCreate(true)}
-            className="px-4 py-2 text-sm font-medium text-white rounded-lg transition-opacity hover:opacity-90"
-            style={{ backgroundColor: '#06C755' }}
-          >
+          <Button onClick={() => setShowCreate(true)}>
             + 新規テンプレート
-          </button>
+          </Button>
         }
       />
 
-      {/* 編集モーダル */}
-      {editingTemplate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-lg">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-              <h2 className="text-sm font-semibold text-gray-800">テンプレートを編集</h2>
-              <button
-                onClick={() => setEditingTemplate(null)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+      {/* 編集ダイアログ */}
+      <Dialog
+        open={editingTemplate !== null}
+        onOpenChange={(open) => { if (!open) setEditingTemplate(null) }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>テンプレートを編集</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">
+                テンプレート名 <span className="text-destructive">*</span>
+              </label>
+              <input
+                type="text"
+                className={inputClass}
+                value={editForm.name}
+                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+              />
             </div>
-            <div className="px-6 py-5 space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">テンプレート名 <span className="text-red-500">*</span></label>
-                <input
-                  type="text"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-                  value={editForm.name}
-                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">カテゴリ <span className="text-red-500">*</span></label>
-                <input
-                  type="text"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-                  value={editForm.category}
-                  onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">メッセージタイプ</label>
-                <select
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
-                  value={editForm.messageType}
-                  onChange={(e) => setEditForm({ ...editForm, messageType: e.target.value })}
-                >
-                  <option value="text">テキスト</option>
-                  <option value="image">画像</option>
-                  <option value="flex">Flex</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">メッセージ内容 <span className="text-red-500">*</span></label>
-                <textarea
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
-                  rows={5}
-                  value={editForm.messageContent}
-                  onChange={(e) => setEditForm({ ...editForm, messageContent: e.target.value })}
-                />
-              </div>
-              {editError && <p className="text-xs text-red-600">{editError}</p>}
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">
+                カテゴリ <span className="text-destructive">*</span>
+              </label>
+              <input
+                type="text"
+                className={inputClass}
+                value={editForm.category}
+                onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
+              />
             </div>
-            <div className="flex gap-2 px-6 py-4 border-t border-gray-200">
-              <button
-                onClick={handleEditSave}
-                disabled={editSaving}
-                className="px-4 py-2 text-sm font-medium text-white rounded-lg disabled:opacity-50 transition-opacity"
-                style={{ backgroundColor: '#06C755' }}
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">メッセージタイプ</label>
+              <select
+                className={inputClass}
+                value={editForm.messageType}
+                onChange={(e) => setEditForm({ ...editForm, messageType: e.target.value })}
               >
-                {editSaving ? '保存中...' : '保存'}
-              </button>
-              <button
-                onClick={() => setEditingTemplate(null)}
-                className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-              >
-                キャンセル
-              </button>
+                <option value="text">テキスト</option>
+                <option value="image">画像</option>
+                <option value="flex">Flex</option>
+              </select>
             </div>
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">
+                メッセージ内容 <span className="text-destructive">*</span>
+              </label>
+              <textarea
+                className={`${inputClass} resize-none`}
+                rows={5}
+                value={editForm.messageContent}
+                onChange={(e) => setEditForm({ ...editForm, messageContent: e.target.value })}
+              />
+            </div>
+            {editError && <p className="text-xs text-destructive">{editError}</p>}
           </div>
-        </div>
-      )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingTemplate(null)} disabled={editSaving}>
+              キャンセル
+            </Button>
+            <Button onClick={handleEditSave} disabled={editSaving}>
+              {editSaving ? '保存中...' : '保存'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      {/* Error */}
+      {/* 削除確認 */}
+      <ConfirmDialog
+        open={confirmDelete !== null}
+        onOpenChange={(open) => { if (!open) setConfirmDelete(null) }}
+        title="テンプレートを削除しますか？"
+        description="この操作は元に戻せません。"
+        confirmLabel="削除する"
+        variant="destructive"
+        onConfirm={() => confirmDelete && handleDelete(confirmDelete)}
+      />
+
       {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+        <div className="mb-4 p-4 bg-destructive/10 border border-destructive/20 rounded-md text-destructive text-sm">
           {error}
         </div>
       )}
 
-      {/* Category filter */}
+      {/* カテゴリフィルター */}
       {!loading && categories.length > 0 && (
         <div className="mb-4 flex flex-wrap gap-2">
           <button
             onClick={() => setSelectedCategory('all')}
-            className={`px-3 py-1.5 min-h-[44px] text-xs font-medium rounded-full transition-colors ${
+            className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
               selectedCategory === 'all'
-                ? 'text-white'
-                : 'text-gray-600 bg-gray-100 hover:bg-gray-200'
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-muted text-muted-foreground hover:bg-accent'
             }`}
-            style={selectedCategory === 'all' ? { backgroundColor: '#06C755' } : undefined}
           >
             全て
           </button>
@@ -307,12 +319,11 @@ export default function TemplatesPage() {
             <button
               key={cat}
               onClick={() => setSelectedCategory(cat)}
-              className={`px-3 py-1.5 min-h-[44px] text-xs font-medium rounded-full transition-colors ${
+              className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
                 selectedCategory === cat
-                  ? 'text-white'
-                  : 'text-gray-600 bg-gray-100 hover:bg-gray-200'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-muted-foreground hover:bg-accent'
               }`}
-              style={selectedCategory === cat ? { backgroundColor: '#06C755' } : undefined}
             >
               {cat}
             </button>
@@ -320,35 +331,39 @@ export default function TemplatesPage() {
         </div>
       )}
 
-      {/* Create form */}
+      {/* 作成フォーム */}
       {showCreate && (
-        <div className="mb-6 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h2 className="text-sm font-semibold text-gray-800 mb-4">新規テンプレートを作成</h2>
+        <div className="mb-6 rounded-md border border-border bg-card p-6">
+          <h2 className="text-sm font-semibold text-foreground mb-4">新規テンプレートを作成</h2>
           <div className="space-y-4 max-w-lg">
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">テンプレート名 <span className="text-red-500">*</span></label>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">
+                テンプレート名 <span className="text-destructive">*</span>
+              </label>
               <input
                 type="text"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                className={inputClass}
                 placeholder="例: ウェルカムメッセージ"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">カテゴリ <span className="text-red-500">*</span></label>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">
+                カテゴリ <span className="text-destructive">*</span>
+              </label>
               <input
                 type="text"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                className={inputClass}
                 placeholder="例: 挨拶、キャンペーン、通知"
                 value={form.category}
                 onChange={(e) => setForm({ ...form, category: e.target.value })}
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">メッセージタイプ</label>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">メッセージタイプ</label>
               <select
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
+                className={inputClass}
                 value={form.messageType}
                 onChange={(e) => setForm({ ...form, messageType: e.target.value })}
               >
@@ -358,132 +373,100 @@ export default function TemplatesPage() {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">メッセージ内容 <span className="text-red-500">*</span></label>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">
+                メッセージ内容 <span className="text-destructive">*</span>
+              </label>
               <textarea
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
+                className={`${inputClass} resize-none`}
                 rows={4}
                 placeholder="メッセージ内容を入力してください"
                 value={form.messageContent}
                 onChange={(e) => setForm({ ...form, messageContent: e.target.value })}
               />
             </div>
-
-            {formError && <p className="text-xs text-red-600">{formError}</p>}
-
+            {formError && <p className="text-xs text-destructive">{formError}</p>}
             <div className="flex gap-2">
-              <button
-                onClick={handleCreate}
-                disabled={saving}
-                className="px-4 py-2 text-sm font-medium text-white rounded-lg disabled:opacity-50 transition-opacity"
-                style={{ backgroundColor: '#06C755' }}
-              >
+              <Button onClick={handleCreate} disabled={saving}>
                 {saving ? '作成中...' : '作成'}
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="outline"
                 onClick={() => { setShowCreate(false); setFormError('') }}
-                className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
               >
                 キャンセル
-              </button>
+              </Button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Loading skeleton */}
       {loading ? (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="px-4 py-4 border-b border-gray-100 flex items-center gap-4 animate-pulse">
-              <div className="flex-1 space-y-2">
-                <div className="h-3 bg-gray-200 rounded w-48" />
-                <div className="h-2 bg-gray-100 rounded w-32" />
-              </div>
-              <div className="h-5 bg-gray-100 rounded-full w-16" />
-              <div className="h-3 bg-gray-100 rounded w-24" />
-            </div>
-          ))}
-        </div>
+        <LoadingState rows={4} columns={4} />
       ) : templates.length === 0 && !showCreate ? (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
-          <p className="text-gray-500">テンプレートがありません。「新規テンプレート」から作成してください。</p>
-        </div>
+        <EmptyState
+          icon={<LayoutTemplate size={32} />}
+          title="テンプレートがありません"
+          description="「新規テンプレート」から最初のテンプレートを作成してください"
+          action={<Button onClick={() => setShowCreate(true)}>新規テンプレート</Button>}
+        />
       ) : (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px]">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-200">
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  テンプレート名
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  カテゴリ
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  メッセージタイプ
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  作成日時
-                </th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
+        <div className="rounded-md border border-border overflow-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>テンプレート名</TableHead>
+                <TableHead>カテゴリ</TableHead>
+                <TableHead>メッセージタイプ</TableHead>
+                <TableHead>作成日時</TableHead>
+                <TableHead className="text-right">操作</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {templates.map((template) => (
-                <tr key={template.id} className="hover:bg-gray-50 transition-colors">
-                  {/* Name */}
-                  <td className="px-4 py-3">
+                <TableRow key={template.id}>
+                  <TableCell>
                     <div>
-                      <p className="text-sm font-medium text-gray-900">{template.name}</p>
-                      <p className="text-xs text-gray-400 mt-0.5 truncate max-w-xs">
+                      <p className="text-sm font-medium">{template.name}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5 truncate max-w-xs">
                         {template.messageContent.slice(0, 50)}
                         {template.messageContent.length > 50 ? '...' : ''}
                       </p>
                     </div>
-                  </td>
-
-                  {/* Category */}
-                  <td className="px-4 py-3">
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
-                      {template.category}
-                    </span>
-                  </td>
-
-                  {/* Message Type */}
-                  <td className="px-4 py-3 text-sm text-gray-600">
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{template.category}</Badge>
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
                     {messageTypeLabels[template.messageType] || template.messageType}
-                  </td>
-
-                  {/* Created At */}
-                  <td className="px-4 py-3 text-sm text-gray-500">
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
                     {formatDate(template.createdAt)}
-                  </td>
-
-                  {/* Actions */}
-                  <td className="px-4 py-3 text-right">
+                  </TableCell>
+                  <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <button
+                      <Button
+                        size="sm"
+                        variant="outline"
                         onClick={() => handleEditOpen(template)}
-                        className="px-3 py-1 text-xs font-medium text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors"
                       >
                         編集
-                      </button>
-                      <button
-                        onClick={() => handleDelete(template.id)}
-                        className="px-3 py-1 text-xs font-medium text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-md transition-colors"
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => setConfirmDelete(template.id)}
                       >
                         削除
-                      </button>
+                      </Button>
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
-          </div>
+            </TableBody>
+          </Table>
         </div>
       )}
+
       <CcPromptButton prompts={ccPrompts} />
     </div>
   )
