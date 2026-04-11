@@ -1,67 +1,132 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAccount } from '@/contexts/account-context'
 import type { AccountWithStats } from '@/contexts/account-context'
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import {
+  LayoutDashboard,
+  Users,
+  MessageSquare,
+  Send,
+  FileText,
+  BarChart2,
+  Settings,
+  Menu,
+  LogOut,
+  ChevronDown,
+  Check,
+  Megaphone,
+  Repeat2,
+  Clock,
+  Grid2X2,
+  ClipboardList,
+  ClipboardCheck,
+  Share2,
+  TrendingUp,
+  Star,
+  Link2,
+  UserCog,
+  Building2,
+  KeyRound,
+  ArrowLeftRight,
+  ShieldCheck,
+  AlertTriangle,
+  Webhook,
+  Bell,
+  Zap,
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
 
-// ─── メニュー定義（ユーザー目線のカテゴリ） ───
+// ─── メニュー定義 ───────────────────────────────────────────
 
-const menuSections = [
+type NavItem = {
+  href: string
+  label: string
+  icon: React.ReactNode
+  danger?: boolean
+  roles?: string[]  // undefined = 全員表示
+}
+
+type NavSection = {
+  label: string | null
+  items: NavItem[]
+}
+
+const menuSections: NavSection[] = [
   {
-    label: null, // セクションラベルなし（メイン）
+    label: null,
     items: [
-      { href: '/', label: 'ダッシュボード', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
-      { href: '/friends', label: '友だち管理', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z' },
-      { href: '/chats', label: '個別チャット', icon: 'M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z' },
+      { href: '/', label: 'ホーム', icon: <LayoutDashboard size={18} /> },
     ],
   },
   {
-    label: '配信',
+    label: 'メッセージ',
     items: [
-      { href: '/scenarios', label: 'シナリオ配信', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01' },
-      { href: '/broadcasts', label: '一斉配信', icon: 'M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z' },
-      { href: '/templates', label: 'テンプレート', icon: 'M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z' },
-      { href: '/auto-replies', label: '自動返信', icon: 'M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6' },
-      { href: '/reminders', label: 'リマインダ', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' },
-      { href: '/rich-menus', label: 'リッチメニュー', icon: 'M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z' },
+      { href: '/broadcasts', label: '一斉配信', icon: <Megaphone size={18} /> },
+      { href: '/scenarios', label: 'シナリオ配信', icon: <Repeat2 size={18} /> },
+      { href: '/templates', label: 'テンプレート', icon: <FileText size={18} /> },
+      { href: '/auto-replies', label: '自動返信', icon: <Send size={18} /> },
+      { href: '/reminders', label: 'リマインダ', icon: <Clock size={18} /> },
+    ],
+  },
+  {
+    label: '友だち・チャット',
+    items: [
+      { href: '/friends', label: '友だち管理', icon: <Users size={18} /> },
+      { href: '/chats', label: '個別チャット', icon: <MessageSquare size={18} /> },
+    ],
+  },
+  {
+    label: 'コンテンツ',
+    items: [
+      { href: '/rich-menus', label: 'リッチメニュー', icon: <Grid2X2 size={18} /> },
+      { href: '/forms', label: 'フォーム管理', icon: <ClipboardList size={18} /> },
+      { href: '/form-submissions', label: 'フォーム回答', icon: <ClipboardCheck size={18} /> },
     ],
   },
   {
     label: '分析',
     items: [
-      { href: '/affiliates', label: '流入経路', icon: 'M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1' },
-      { href: '/conversions', label: 'CV計測', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' },
-      { href: '/scoring', label: 'スコアリング', icon: 'M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z' },
-      { href: '/tracked-links', label: 'リンク計測', icon: 'M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122' },
-      { href: '/forms', label: 'フォーム管理', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2' },
-      { href: '/form-submissions', label: 'フォーム回答', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
-      { href: '/ad-platforms', label: '広告連携', icon: 'M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z' },
+      { href: '/affiliates', label: '流入経路', icon: <Share2 size={18} /> },
+      { href: '/conversions', label: 'CV計測', icon: <TrendingUp size={18} /> },
+      { href: '/scoring', label: 'スコアリング', icon: <Star size={18} /> },
+      { href: '/tracked-links', label: 'リンク計測', icon: <Link2 size={18} /> },
+      { href: '/ad-platforms', label: '広告連携', icon: <BarChart2 size={18} /> },
     ],
   },
   {
     label: '自動化',
     items: [
-      { href: '/automations', label: 'オートメーション', icon: 'M13 10V3L4 14h7v7l9-11h-7z' },
-      { href: '/webhooks', label: 'Webhook', icon: 'M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
-      { href: '/notifications', label: '通知', icon: 'M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9' },
+      { href: '/automations', label: 'オートメーション', icon: <Zap size={18} /> },
+      { href: '/webhooks', label: 'Webhook', icon: <Webhook size={18} /> },
+      { href: '/notifications', label: '通知', icon: <Bell size={18} /> },
     ],
   },
   {
     label: '設定',
     items: [
-      { href: '/staff', label: 'スタッフ管理', icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z' },
-      { href: '/accounts', label: 'LINEアカウント', icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4' },
-      { href: '/users', label: 'UUID管理', icon: 'M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2' },
-      { href: '/traffic-pools', label: 'トラフィックプール', icon: 'M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4' },
-      { href: '/health', label: 'BAN検知', icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z' },
-      { href: '/emergency', label: '緊急コントロール', icon: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.072 16.5c-.77.833.192 2.5 1.732 2.5z', danger: true },
+      { href: '/staff', label: 'スタッフ管理', icon: <UserCog size={18} />, roles: ['owner'] },
+      { href: '/accounts', label: 'LINEアカウント', icon: <Building2 size={18} />, roles: ['owner', 'admin'] },
+      { href: '/users', label: 'UUID管理', icon: <KeyRound size={18} />, roles: ['owner', 'admin'] },
+      { href: '/traffic-pools', label: 'トラフィックプール', icon: <ArrowLeftRight size={18} /> },
+      { href: '/health', label: 'BAN検知', icon: <ShieldCheck size={18} /> },
+      { href: '/emergency', label: '緊急コントロール', icon: <AlertTriangle size={18} />, danger: true },
     ],
   },
 ]
 
-function AccountAvatar({ account, size = 32 }: { account: AccountWithStats; size?: number }) {
+// ─── アカウントアバター ───────────────────────────────────────
+
+function AccountAvatar({ account, size = 28 }: { account: AccountWithStats; size?: number }) {
   const displayName = account.displayName || account.name
   if (account.pictureUrl) {
     return (
@@ -75,128 +140,79 @@ function AccountAvatar({ account, size = 32 }: { account: AccountWithStats; size
   }
   return (
     <div
-      className="rounded-full flex items-center justify-center text-white font-bold shrink-0"
-      style={{ width: size, height: size, backgroundColor: '#06C755', fontSize: size * 0.4 }}
+      className="rounded-full flex items-center justify-center text-white font-bold shrink-0 bg-primary"
+      style={{ width: size, height: size, fontSize: size * 0.4 }}
     >
       {displayName.charAt(0)}
     </div>
   )
 }
 
+// ─── アカウント切替 ───────────────────────────────────────────
+
 function AccountSwitcher() {
   const { accounts, selectedAccount, setSelectedAccountId, loading } = useAccount()
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [])
+  if (loading || accounts.length === 0 || !selectedAccount) return null
 
-  if (loading || accounts.length === 0) return null
-
-  const displayName = selectedAccount?.displayName || selectedAccount?.name || ''
+  const displayName = selectedAccount.displayName || selectedAccount.name
 
   return (
-    <div ref={ref} className="px-3 py-3 border-b border-gray-200">
-      <button
-        onClick={() => setOpen(!open)}
-        className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-gray-50 transition-colors"
-      >
-        {selectedAccount && <AccountAvatar account={selectedAccount} size={28} />}
-        <div className="flex-1 text-left min-w-0">
-          <p className="text-sm font-medium text-gray-900 truncate">{displayName}</p>
-        </div>
-        <svg
-          className={`w-4 h-4 text-gray-400 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
-
-      {open && (
-        <div className="mt-1 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden">
+    <div className="px-3 py-2 border-b border-border">
+      <DropdownMenu>
+        <DropdownMenuTrigger className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md hover:bg-accent transition-colors cursor-pointer bg-transparent border-0 text-left">
+          <AccountAvatar account={selectedAccount} size={26} />
+          <div className="flex-1 text-left min-w-0">
+            <p className="text-sm font-medium text-foreground truncate">{displayName}</p>
+          </div>
+          <ChevronDown size={14} className="text-muted-foreground shrink-0" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-56">
           {accounts.map((account) => {
-            const isSelected = account.id === selectedAccount?.id
+            const isSelected = account.id === selectedAccount.id
             const name = account.displayName || account.name
             return (
-              <button
+              <DropdownMenuItem
                 key={account.id}
-                onClick={() => {
-                  setSelectedAccountId(account.id)
-                  setOpen(false)
-                }}
-                className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition-colors ${
-                  isSelected ? 'bg-green-50' : 'hover:bg-gray-50'
-                }`}
+                onClick={() => setSelectedAccountId(account.id)}
+                className="flex items-center gap-2.5 cursor-pointer"
               >
-                <AccountAvatar account={account} size={24} />
+                <AccountAvatar account={account} size={22} />
                 <div className="flex-1 min-w-0">
-                  <p className={`text-sm truncate ${isSelected ? 'font-semibold text-green-700' : 'text-gray-700'}`}>
-                    {name}
-                  </p>
+                  <p className={cn('text-sm truncate', isSelected && 'font-semibold text-primary')}>{name}</p>
                   {account.basicId && (
-                    <p className="text-xs text-gray-400 truncate">{account.basicId}</p>
+                    <p className="text-xs text-muted-foreground truncate">{account.basicId}</p>
                   )}
                 </div>
-                {isSelected && (
-                  <svg className="w-4 h-4 text-green-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                )}
-              </button>
+                {isSelected && <Check size={14} className="text-primary shrink-0" />}
+              </DropdownMenuItem>
             )
           })}
-        </div>
-      )}
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   )
 }
 
-function NavIcon({ d }: { d: string }) {
-  return (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={d} />
-    </svg>
-  )
-}
+// ─── サイドバー本体 ───────────────────────────────────────────
 
-export default function Sidebar() {
+function SidebarContent({ staffRole }: { staffRole: string | null }) {
   const pathname = usePathname()
-  const [isOpen, setIsOpen] = useState(false)
-  const [staffName, setStaffName] = useState<string | null>(null)
-  const [staffRole, setStaffRole] = useState<string | null>(null)
 
-  useEffect(() => {
-    setStaffName(localStorage.getItem('lh_staff_name'))
-    setStaffRole(localStorage.getItem('lh_staff_role'))
-  }, [])
+  const isActive = (href: string) =>
+    href === '/' ? pathname === '/' : pathname.startsWith(href)
 
-  useEffect(() => { setIsOpen(false) }, [pathname])
-  useEffect(() => {
-    document.body.style.overflow = isOpen ? 'hidden' : ''
-    return () => { document.body.style.overflow = '' }
-  }, [isOpen])
-
-  const isActive = (href: string) => href === '/' ? pathname === '/' : pathname.startsWith(href)
-
-  const sidebarContent = (
-    <>
+  return (
+    <div className="flex flex-col h-full">
       {/* ロゴ */}
-      <div className="px-6 py-5 border-b border-gray-200">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-sm" style={{ backgroundColor: '#06C755' }}>
+      <div className="px-5 py-4 border-b border-border">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-md flex items-center justify-center text-white font-bold text-sm bg-primary">
             H
           </div>
           <div>
-            <p className="text-sm font-bold text-gray-900 leading-tight">LINE Harness</p>
-            <p className="text-xs text-gray-400">管理画面</p>
+            <p className="text-sm font-bold leading-tight">LINE Harness</p>
+            <p className="text-xs text-muted-foreground">管理画面</p>
           </div>
         </div>
       </div>
@@ -205,59 +221,52 @@ export default function Sidebar() {
       <AccountSwitcher />
 
       {/* ナビゲーション */}
-      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        {menuSections.map((section, si) => (
-          <div key={si}>
-            {section.label && (
-              <div className="pt-5 pb-2 px-3">
-                <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">{section.label}</p>
-              </div>
-            )}
-            {section.items.filter((item) => {
-              if (item.href === '/staff' && staffRole !== 'owner') return false
-              if (item.href === '/accounts' && staffRole === 'staff') return false
-              return true
-            }).map((item) => {
-              const active = isActive(item.href)
-              const isDanger = 'danger' in item && item.danger
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                    active
-                      ? 'text-white'
-                      : isDanger
-                        ? 'text-red-500 hover:bg-red-50'
-                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                  }`}
-                  style={active ? { backgroundColor: isDanger ? '#EF4444' : '#06C755' } : {}}
-                >
-                  <NavIcon d={item.icon} />
-                  {item.label}
-                </Link>
-              )
-            })}
-          </div>
-        ))}
+      <nav className="flex-1 px-3 py-3 overflow-y-auto space-y-0.5">
+        {menuSections.map((section, si) => {
+          const visibleItems = section.items.filter((item) => {
+            if (item.roles && staffRole && !item.roles.includes(staffRole)) return false
+            return true
+          })
+          if (visibleItems.length === 0) return null
+          return (
+            <div key={si}>
+              {section.label && (
+                <p className="px-3 pt-4 pb-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                  {section.label}
+                </p>
+              )}
+              {visibleItems.map((item) => {
+                const active = isActive(item.href)
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      'flex items-center gap-2.5 px-3 py-2 rounded-md text-sm font-medium transition-colors',
+                      active
+                        ? item.danger
+                          ? 'bg-destructive text-white'
+                          : 'bg-primary text-primary-foreground'
+                        : item.danger
+                          ? 'text-destructive hover:bg-destructive/10'
+                          : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                    )}
+                  >
+                    {item.icon}
+                    {item.label}
+                  </Link>
+                )
+              })}
+            </div>
+          )
+        })}
       </nav>
 
       {/* フッター */}
-      <div className="border-t border-gray-200">
-        {staffName && (
-          <div className="px-3 py-2 text-xs text-gray-500 border-t border-gray-100">
-            <div className="font-medium text-gray-700">{staffName}</div>
-            <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-medium mt-0.5 ${
-              staffRole === 'owner' ? 'bg-yellow-100 text-yellow-800' :
-              staffRole === 'admin' ? 'bg-blue-100 text-blue-800' :
-              'bg-gray-100 text-gray-600'
-            }`}>
-              {staffRole === 'owner' ? 'オーナー' : staffRole === 'admin' ? '管理者' : 'スタッフ'}
-            </span>
-          </div>
-        )}
-        <div className="px-6 py-4 space-y-3">
-        <p className="text-xs text-gray-400">LINE Harness v{process.env.APP_VERSION || '0.0.0'}</p>
+      <div className="border-t border-border px-4 py-3">
+        <p className="text-xs text-muted-foreground mb-2">
+          LINE Harness v{process.env.APP_VERSION || '0.0.0'}
+        </p>
         <button
           onClick={() => {
             localStorage.removeItem('lh_api_key')
@@ -265,58 +274,55 @@ export default function Sidebar() {
             localStorage.removeItem('lh_staff_role')
             window.location.href = '/login'
           }}
-          className="flex items-center gap-2 text-xs text-gray-400 hover:text-red-500 transition-colors"
+          className="flex items-center gap-2 text-xs text-muted-foreground hover:text-destructive transition-colors"
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-          </svg>
+          <LogOut size={14} />
           ログアウト
         </button>
-        </div>
       </div>
-    </>
+    </div>
   )
+}
+
+// ─── エクスポート ─────────────────────────────────────────────
+
+export default function Sidebar() {
+  const [staffRole, setStaffRole] = useState<string | null>(null)
+  const [mobileOpen, setMobileOpen] = useState(false)
+  const pathname = usePathname()
+
+  useEffect(() => {
+    setStaffRole(localStorage.getItem('lh_staff_role'))
+  }, [])
+
+  useEffect(() => {
+    setMobileOpen(false)
+  }, [pathname])
 
   return (
     <>
       {/* モバイル: ハンバーガーヘッダー */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3">
-        <button
-          onClick={() => setIsOpen(!isOpen)}
-          className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
-          aria-label="メニュー"
-        >
-          <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            {isOpen
-              ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            }
-          </svg>
-        </button>
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-background border-b border-border px-4 h-14 flex items-center gap-3">
+        <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+          <SheetTrigger
+            className="min-w-[40px] min-h-[40px] flex items-center justify-center rounded-md hover:bg-accent transition-colors bg-transparent border-0 cursor-pointer"
+            aria-label="メニュー"
+          >
+            <Menu size={20} />
+          </SheetTrigger>
+          <SheetContent side="left" className="w-64 p-0">
+            <SidebarContent staffRole={staffRole} />
+          </SheetContent>
+        </Sheet>
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white font-bold text-xs" style={{ backgroundColor: '#06C755' }}>H</div>
-          <p className="text-sm font-bold text-gray-900">LINE Harness</p>
+          <div className="w-7 h-7 rounded-md flex items-center justify-center text-white font-bold text-xs bg-primary">H</div>
+          <p className="text-sm font-bold">LINE Harness</p>
         </div>
       </div>
 
-      {/* モバイル: オーバーレイ */}
-      {isOpen && <div className="lg:hidden fixed inset-0 z-40 bg-black/50" onClick={() => setIsOpen(false)} />}
-
-      {/* モバイル: スライドインサイドバー */}
-      <aside className={`lg:hidden fixed top-0 left-0 z-50 w-72 bg-white flex flex-col h-screen transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="absolute top-4 right-4">
-          <button onClick={() => setIsOpen(false)} className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-gray-100" aria-label="閉じる">
-            <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-        {sidebarContent}
-      </aside>
-
       {/* デスクトップ: 常時表示 */}
-      <aside className="hidden lg:flex w-64 bg-white border-r border-gray-200 flex-col h-screen sticky top-0">
-        {sidebarContent}
+      <aside className="hidden lg:flex w-60 border-r border-border flex-col h-screen sticky top-0 bg-background">
+        <SidebarContent staffRole={staffRole} />
       </aside>
     </>
   )
