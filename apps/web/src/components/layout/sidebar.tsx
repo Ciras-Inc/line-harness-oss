@@ -53,7 +53,9 @@ type NavItem = {
   label: string
   icon: React.ReactNode
   danger?: boolean
-  roles?: string[]  // undefined = 全員表示
+  roles?: string[]       // undefined = 全員表示
+  mobileHide?: boolean   // スマホでは非表示
+  mobilePriority?: boolean  // スマホでは「よく使う」に表示
 }
 
 type NavSection = {
@@ -65,15 +67,15 @@ const menuSections: NavSection[] = [
   {
     label: null,
     items: [
-      { href: '/', label: 'ホーム', icon: <LayoutDashboard size={18} /> },
+      { href: '/', label: 'ホーム', icon: <LayoutDashboard size={18} />, mobilePriority: true },
     ],
   },
   {
     label: 'メッセージ',
     items: [
-      { href: '/broadcasts', label: '一斉配信', icon: <Megaphone size={18} /> },
+      { href: '/broadcasts', label: '一斉配信', icon: <Megaphone size={18} />, mobilePriority: true },
       { href: '/scenarios', label: 'シナリオ配信', icon: <Repeat2 size={18} /> },
-      { href: '/templates', label: 'テンプレート', icon: <FileText size={18} /> },
+      { href: '/templates', label: 'テンプレート', icon: <FileText size={18} />, mobilePriority: true },
       { href: '/auto-replies', label: '自動返信', icon: <Send size={18} /> },
       { href: '/reminders', label: 'リマインダ', icon: <Clock size={18} /> },
     ],
@@ -81,8 +83,8 @@ const menuSections: NavSection[] = [
   {
     label: '友だち・チャット',
     items: [
-      { href: '/friends', label: '友だち管理', icon: <Users size={18} /> },
-      { href: '/chats', label: '個別チャット', icon: <MessageSquare size={18} /> },
+      { href: '/friends', label: '友だち管理', icon: <Users size={18} />, mobilePriority: true },
+      { href: '/chats', label: '個別チャット', icon: <MessageSquare size={18} />, mobilePriority: true },
     ],
   },
   {
@@ -96,18 +98,18 @@ const menuSections: NavSection[] = [
   {
     label: '分析',
     items: [
-      { href: '/affiliates', label: '流入経路', icon: <Share2 size={18} /> },
-      { href: '/conversions', label: 'CV計測', icon: <TrendingUp size={18} /> },
+      { href: '/affiliates', label: '流入経路', icon: <Share2 size={18} />, mobileHide: true },
+      { href: '/conversions', label: 'CV計測', icon: <TrendingUp size={18} />, mobileHide: true },
       { href: '/scoring', label: 'スコアリング', icon: <Star size={18} /> },
       { href: '/tracked-links', label: 'リンク計測', icon: <Link2 size={18} /> },
-      { href: '/ad-platforms', label: '広告連携', icon: <BarChart2 size={18} /> },
+      { href: '/ad-platforms', label: '広告連携', icon: <BarChart2 size={18} />, mobileHide: true },
     ],
   },
   {
     label: '自動化',
     items: [
       { href: '/automations', label: 'オートメーション', icon: <Zap size={18} /> },
-      { href: '/webhooks', label: 'Webhook', icon: <Webhook size={18} /> },
+      { href: '/webhooks', label: 'Webhook', icon: <Webhook size={18} />, mobileHide: true },
       { href: '/notifications', label: '通知', icon: <Bell size={18} /> },
     ],
   },
@@ -116,8 +118,8 @@ const menuSections: NavSection[] = [
     items: [
       { href: '/staff', label: 'スタッフ管理', icon: <UserCog size={18} />, roles: ['owner'] },
       { href: '/accounts', label: 'LINEアカウント', icon: <Building2 size={18} />, roles: ['owner', 'admin'] },
-      { href: '/users', label: 'UUID管理', icon: <KeyRound size={18} />, roles: ['owner', 'admin'] },
-      { href: '/traffic-pools', label: 'トラフィックプール', icon: <ArrowLeftRight size={18} /> },
+      { href: '/users', label: 'UUID管理', icon: <KeyRound size={18} />, roles: ['owner', 'admin'], mobileHide: true },
+      { href: '/traffic-pools', label: 'トラフィックプール', icon: <ArrowLeftRight size={18} />, mobileHide: true },
       { href: '/health', label: 'BAN検知', icon: <ShieldCheck size={18} /> },
       { href: '/emergency', label: '緊急コントロール', icon: <AlertTriangle size={18} />, danger: true },
     ],
@@ -196,11 +198,16 @@ function AccountSwitcher() {
 
 // ─── サイドバー本体 ───────────────────────────────────────────
 
-function SidebarContent({ staffRole }: { staffRole: string | null }) {
+function SidebarContent({ staffRole, mobile = false }: { staffRole: string | null; mobile?: boolean }) {
   const pathname = usePathname()
 
   const isActive = (href: string) =>
     href === '/' ? pathname === '/' : pathname.startsWith(href)
+
+  // モバイル用「よく使う」セクション
+  const priorityItems = menuSections
+    .flatMap((s) => s.items)
+    .filter((item) => item.mobilePriority)
 
   return (
     <div className="flex flex-col h-full">
@@ -222,9 +229,39 @@ function SidebarContent({ staffRole }: { staffRole: string | null }) {
 
       {/* ナビゲーション */}
       <nav className="flex-1 px-3 py-3 overflow-y-auto space-y-0.5">
+        {/* モバイル: よく使うセクション */}
+        {mobile && (
+          <div>
+            <p className="px-3 pt-2 pb-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+              よく使う
+            </p>
+            {priorityItems.map((item) => {
+              const active = isActive(item.href)
+              return (
+                <Link
+                  key={`priority-${item.href}`}
+                  href={item.href}
+                  className={cn(
+                    'flex items-center gap-2.5 px-3 py-2.5 rounded-md text-sm font-medium transition-colors',
+                    active
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                  )}
+                >
+                  {item.icon}
+                  {item.label}
+                </Link>
+              )
+            })}
+            <div className="my-3 border-t border-border" />
+          </div>
+        )}
+
+        {/* 全セクション（モバイルではmobileHideをフィルタ） */}
         {menuSections.map((section, si) => {
           const visibleItems = section.items.filter((item) => {
             if (item.roles && staffRole && !item.roles.includes(staffRole)) return false
+            if (mobile && item.mobileHide) return false
             return true
           })
           if (visibleItems.length === 0) return null
@@ -311,7 +348,7 @@ export default function Sidebar() {
             <Menu size={20} />
           </SheetTrigger>
           <SheetContent side="left" className="w-64 p-0">
-            <SidebarContent staffRole={staffRole} />
+            <SidebarContent staffRole={staffRole} mobile={true} />
           </SheetContent>
         </Sheet>
         <div className="flex items-center gap-2">

@@ -187,7 +187,81 @@ export default function BroadcastsPage() {
           action={<Button onClick={() => setShowCreate(true)}>新規配信作成</Button>}
         />
       ) : (
-        <div className="rounded-md border border-border overflow-auto">
+        <>
+          {/* モバイル: カードリスト */}
+          <div className="sm:hidden space-y-3">
+            {broadcasts.map((broadcast) => {
+              const { label, variant } = statusBadge[broadcast.status]
+              const tagName = getTagName(broadcast.targetTagId)
+              const isSending = sendingId === broadcast.id
+              const insight = insights[broadcast.id]
+
+              return (
+                <div key={broadcast.id} className="rounded-lg border border-border bg-card p-4 space-y-3">
+                  {/* ヘッダー */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-foreground truncate">{broadcast.title}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {broadcast.messageType === 'text' ? 'テキスト' : broadcast.messageType === 'image' ? '画像' : 'Flex'}
+                        {'　'}対象: {broadcast.targetType === 'all' ? '全員' : tagName ? `タグ: ${tagName}` : 'タグ指定'}
+                      </p>
+                    </div>
+                    <Badge variant={variant}>{label}</Badge>
+                  </div>
+
+                  {/* 日時 */}
+                  {(broadcast.scheduledAt || broadcast.sentAt) && (
+                    <div className="text-xs text-muted-foreground space-y-0.5">
+                      {broadcast.scheduledAt && <p>予約: {formatDatetime(broadcast.scheduledAt)}</p>}
+                      {broadcast.sentAt && <p>送信完了: {formatDatetime(broadcast.sentAt)}</p>}
+                    </div>
+                  )}
+
+                  {/* インサイト */}
+                  {broadcast.status === 'sent' && (
+                    <div className="text-xs text-muted-foreground">
+                      {broadcast.totalCount > 0 && (
+                        <p>{broadcast.successCount.toLocaleString('ja-JP')} / {broadcast.totalCount.toLocaleString('ja-JP')} 件送信</p>
+                      )}
+                      {insight ? (
+                        <div className="flex gap-3 mt-1 flex-wrap">
+                          {insight.delivered != null && <span>配信: <strong className="text-foreground">{insight.delivered.toLocaleString('ja-JP')}</strong></span>}
+                          {insight.uniqueImpression != null && <span>開封: <strong className="text-primary">{insight.uniqueImpression.toLocaleString('ja-JP')}</strong>{insight.openRate != null && ` (${(insight.openRate * 100).toFixed(1)}%)`}</span>}
+                          {insight.uniqueClick != null && <span>クリック: <strong className="text-primary">{insight.uniqueClick.toLocaleString('ja-JP')}</strong>{insight.clickRate != null && ` (${(insight.clickRate * 100).toFixed(1)}%)`}</span>}
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => handleFetchInsight(broadcast.id)}
+                          disabled={fetchingInsight === broadcast.id}
+                          className="mt-1 text-xs text-primary hover:underline disabled:opacity-50"
+                        >
+                          {fetchingInsight === broadcast.id ? '取得中...' : 'インサイトを取得'}
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* アクション */}
+                  {(broadcast.status === 'draft' || broadcast.status === 'scheduled') && (
+                    <div className="flex gap-2 pt-1">
+                      {broadcast.status === 'draft' && (
+                        <Button size="sm" variant="default" onClick={() => setConfirmSend(broadcast.id)} disabled={isSending} className="flex-1">
+                          {isSending ? '送信中...' : '今すぐ送信'}
+                        </Button>
+                      )}
+                      <Button size="sm" variant="destructive" onClick={() => setConfirmDelete(broadcast.id)} className="flex-1">
+                        削除
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
+          {/* デスクトップ: テーブル */}
+          <div className="hidden sm:block rounded-md border border-border overflow-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -300,7 +374,8 @@ export default function BroadcastsPage() {
               })}
             </TableBody>
           </Table>
-        </div>
+          </div>
+        </>
       )}
 
       {/* 送信確認 */}
