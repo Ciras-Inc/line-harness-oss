@@ -160,14 +160,14 @@ function AccountSwitcher() {
   const displayName = selectedAccount.displayName || selectedAccount.name
 
   return (
-    <div className="px-3 py-2 border-b border-border">
+    <div className="px-3 py-2 border-b border-sidebar-border">
       <DropdownMenu>
-        <DropdownMenuTrigger className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md hover:bg-accent transition-colors cursor-pointer bg-transparent border-0 text-left">
+        <DropdownMenuTrigger className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md hover:bg-white/[0.08] transition-colors cursor-pointer bg-transparent border-0 text-left">
           <AccountAvatar account={selectedAccount} size={26} />
           <div className="flex-1 text-left min-w-0">
-            <p className="text-sm font-medium text-foreground truncate">{displayName}</p>
+            <p className="text-sm font-medium text-sidebar-foreground truncate">{displayName}</p>
           </div>
-          <ChevronDown size={14} className="text-muted-foreground shrink-0" />
+          <ChevronDown size={14} className="text-sidebar-foreground/50 shrink-0" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-56">
           {accounts.map((account) => {
@@ -210,16 +210,16 @@ function SidebarContent({ staffRole, mobile = false }: { staffRole: string | nul
     .filter((item) => item.mobilePriority)
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-sidebar text-sidebar-foreground">
       {/* ロゴ */}
-      <div className="px-5 py-4 border-b border-border">
+      <div className="px-5 py-4 border-b border-sidebar-border">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-md flex items-center justify-center text-white font-bold text-sm bg-primary">
             H
           </div>
           <div>
-            <p className="text-sm font-bold leading-tight">LINE Harness</p>
-            <p className="text-xs text-muted-foreground">管理画面</p>
+            <p className="text-sm font-bold leading-tight text-sidebar-foreground">LINE Harness</p>
+            <p className="text-xs text-sidebar-foreground/50">管理画面</p>
           </div>
         </div>
       </div>
@@ -232,7 +232,7 @@ function SidebarContent({ staffRole, mobile = false }: { staffRole: string | nul
         {/* モバイル: よく使うセクション */}
         {mobile && (
           <div>
-            <p className="px-3 pt-2 pb-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+            <p className="px-3 pt-2 pb-1.5 text-[10px] font-semibold text-sidebar-foreground/50 uppercase tracking-wider">
               よく使う
             </p>
             {priorityItems.map((item) => {
@@ -242,18 +242,21 @@ function SidebarContent({ staffRole, mobile = false }: { staffRole: string | nul
                   key={`priority-${item.href}`}
                   href={item.href}
                   className={cn(
-                    'flex items-center gap-2.5 px-3 py-2.5 rounded-md text-sm font-medium transition-colors',
+                    'relative flex items-center gap-2.5 px-3 py-2.5 rounded-md text-sm font-medium transition-colors',
                     active
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                      ? 'bg-white/[0.12] text-white'
+                      : 'text-sidebar-foreground/60 hover:bg-white/[0.08] hover:text-sidebar-foreground'
                   )}
                 >
+                  {active && (
+                    <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-4 bg-white rounded-r-full" />
+                  )}
                   {item.icon}
                   {item.label}
                 </Link>
               )
             })}
-            <div className="my-3 border-t border-border" />
+            <div className="my-3 border-t border-sidebar-border" />
           </div>
         )}
 
@@ -268,7 +271,7 @@ function SidebarContent({ staffRole, mobile = false }: { staffRole: string | nul
           return (
             <div key={si}>
               {section.label && (
-                <p className="px-3 pt-4 pb-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                <p className="px-3 pt-4 pb-1.5 text-[10px] font-semibold text-sidebar-foreground/50 uppercase tracking-wider">
                   {section.label}
                 </p>
               )}
@@ -279,16 +282,19 @@ function SidebarContent({ staffRole, mobile = false }: { staffRole: string | nul
                     key={item.href}
                     href={item.href}
                     className={cn(
-                      'flex items-center gap-2.5 px-3 py-2 rounded-md text-sm font-medium transition-colors',
+                      'relative flex items-center gap-2.5 px-3 py-2 rounded-md text-sm font-medium transition-colors',
                       active
                         ? item.danger
-                          ? 'bg-destructive text-white'
-                          : 'bg-primary text-primary-foreground'
+                          ? 'bg-red-900/30 text-red-400'
+                          : 'bg-white/[0.12] text-white'
                         : item.danger
-                          ? 'text-destructive hover:bg-destructive/10'
-                          : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                          ? 'text-red-400/70 hover:bg-red-900/20 hover:text-red-400'
+                          : 'text-sidebar-foreground/60 hover:bg-white/[0.08] hover:text-sidebar-foreground'
                     )}
                   >
+                    {active && !item.danger && (
+                      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-4 bg-white rounded-r-full" />
+                    )}
                     {item.icon}
                     {item.label}
                   </Link>
@@ -300,8 +306,8 @@ function SidebarContent({ staffRole, mobile = false }: { staffRole: string | nul
       </nav>
 
       {/* フッター */}
-      <div className="border-t border-border px-4 py-3">
-        <p className="text-xs text-muted-foreground mb-2">
+      <div className="border-t border-sidebar-border px-4 py-3">
+        <p className="text-xs text-sidebar-foreground/40 mb-2">
           LINE Harness v{process.env.APP_VERSION || '0.0.0'}
         </p>
         <button
@@ -311,7 +317,7 @@ function SidebarContent({ staffRole, mobile = false }: { staffRole: string | nul
             localStorage.removeItem('lh_staff_role')
             window.location.href = '/login'
           }}
-          className="flex items-center gap-2 text-xs text-muted-foreground hover:text-destructive transition-colors"
+          className="flex items-center gap-2 text-xs text-sidebar-foreground/40 hover:text-red-400 transition-colors"
         >
           <LogOut size={14} />
           ログアウト
@@ -338,8 +344,8 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* モバイル: ハンバーガーヘッダー */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-background border-b border-border px-4 h-14 flex items-center gap-3">
+      {/* モバイル: ハンバーガーヘッダー（ガラス効果） */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-40 px-4 h-12 flex items-center gap-3 bg-white/80 border-b border-border [backdrop-filter:saturate(180%)_blur(20px)]">
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
           <SheetTrigger
             className="min-w-[40px] min-h-[40px] flex items-center justify-center rounded-md hover:bg-accent transition-colors bg-transparent border-0 cursor-pointer"
@@ -347,7 +353,7 @@ export default function Sidebar() {
           >
             <Menu size={20} />
           </SheetTrigger>
-          <SheetContent side="left" className="w-64 p-0">
+          <SheetContent side="left" className="w-64 p-0 bg-sidebar">
             <SidebarContent staffRole={staffRole} mobile={true} />
           </SheetContent>
         </Sheet>
@@ -358,7 +364,7 @@ export default function Sidebar() {
       </div>
 
       {/* デスクトップ: 常時表示 */}
-      <aside className="hidden lg:flex w-60 border-r border-border flex-col h-screen sticky top-0 bg-background">
+      <aside className="hidden lg:flex w-60 border-r border-sidebar-border flex-col h-screen sticky top-0 bg-sidebar">
         <SidebarContent staffRole={staffRole} />
       </aside>
     </>
