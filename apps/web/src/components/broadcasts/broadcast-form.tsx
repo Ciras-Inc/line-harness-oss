@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import type { Tag } from '@line-crm/shared'
 import { api, type ApiBroadcast } from '@/lib/api'
 import FlexPreviewComponent from '@/components/flex-preview'
@@ -28,6 +28,7 @@ interface FormState {
 }
 
 export default function BroadcastForm({ tags, onSuccess, onCancel }: BroadcastFormProps) {
+  const messageTextareaRef = useRef<HTMLTextAreaElement>(null)
   const [form, setForm] = useState<FormState>({
     title: '',
     messageType: 'text',
@@ -39,6 +40,24 @@ export default function BroadcastForm({ tags, onSuccess, onCancel }: BroadcastFo
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+
+  const insertVariable = (variable: string) => {
+    const el = messageTextareaRef.current
+    if (!el) {
+      setForm((f) => ({ ...f, messageContent: f.messageContent + variable }))
+      return
+    }
+    const start = el.selectionStart ?? el.value.length
+    const end = el.selectionEnd ?? el.value.length
+    const current = el.value
+    const newValue = current.slice(0, start) + variable + current.slice(end)
+    setForm((f) => ({ ...f, messageContent: newValue }))
+    setTimeout(() => {
+      el.focus()
+      const pos = start + variable.length
+      el.setSelectionRange(pos, pos)
+    }, 0)
+  }
 
   const handleSave = async () => {
     if (!form.title.trim()) { setError('配信タイトルを入力してください'); return }
@@ -165,7 +184,22 @@ export default function BroadcastForm({ tags, onSuccess, onCancel }: BroadcastFo
             )
           })()}
 
+          {form.messageType === 'text' && (
+            <div className="flex gap-1.5 mb-1.5">
+              {['{{name}}', '{{displayName}}'].map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => insertVariable(v)}
+                  className="px-2 py-0.5 text-xs font-mono bg-gray-100 border border-gray-300 rounded hover:bg-gray-200 transition-colors"
+                >
+                  {v}
+                </button>
+              ))}
+            </div>
+          )}
           <textarea
+            ref={messageTextareaRef}
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-y"
             rows={form.messageType === 'flex' ? 8 : form.messageType === 'image' ? 3 : 4}
             placeholder={

@@ -115,17 +115,12 @@ function RichMenuPreview({ template, areaForms, imagePreviewUrl }: {
   areaForms: AreaFormState[]
   imagePreviewUrl: string | null
 }) {
-  const PREVIEW_W = 280
-  const PREVIEW_H = Math.round(PREVIEW_W * (template.size.height / template.size.width))
-  const scaleX = PREVIEW_W / template.size.width
-  const scaleY = PREVIEW_H / template.size.height
-
   return (
-    <div className="sticky top-6">
+    <div className="sticky top-6 w-full sm:w-[280px]">
       <p className="text-xs font-medium text-muted-foreground mb-2">LINEプレビュー</p>
       <div
-        className="relative border border-border rounded-lg overflow-hidden bg-muted/30"
-        style={{ width: PREVIEW_W, height: PREVIEW_H }}
+        className="relative w-full border border-border rounded-lg overflow-hidden bg-muted/30"
+        style={{ aspectRatio: `${template.size.width} / ${template.size.height}` }}
       >
         {imagePreviewUrl && (
           <img
@@ -141,10 +136,10 @@ function RichMenuPreview({ template, areaForms, imagePreviewUrl }: {
               key={idx}
               className={`absolute border-2 flex items-center justify-center text-xs font-bold rounded-sm ${color} ${imagePreviewUrl ? 'bg-opacity-40 border-opacity-60' : ''}`}
               style={{
-                left: Math.round(area.bounds.x * scaleX),
-                top: Math.round(area.bounds.y * scaleY),
-                width: Math.round(area.bounds.width * scaleX),
-                height: Math.round(area.bounds.height * scaleY),
+                left: `${(area.bounds.x / template.size.width) * 100}%`,
+                top: `${(area.bounds.y / template.size.height) * 100}%`,
+                width: `${(area.bounds.width / template.size.width) * 100}%`,
+                height: `${(area.bounds.height / template.size.height) * 100}%`,
               }}
             >
               {areaForms[idx]?.label || `エリア${idx + 1}`}
@@ -314,7 +309,7 @@ export default function RichMenusPage() {
         <div className="mb-6 rounded-md border border-border bg-card p-6">
           <h2 className="text-sm font-semibold text-foreground mb-6">新規リッチメニューを作成</h2>
 
-          <div className="flex gap-8">
+          <div className="flex flex-col sm:flex-row gap-6 sm:gap-8">
             {/* 左: フォーム */}
             <div className="flex-1 space-y-5 min-w-0">
               {/* 基本情報 */}
@@ -472,7 +467,7 @@ export default function RichMenusPage() {
             </div>
 
             {/* 右: プレビュー */}
-            <div className="shrink-0">
+            <div className="w-full sm:w-auto sm:shrink-0">
               <RichMenuPreview
                 template={selectedTemplate}
                 areaForms={areaForms}

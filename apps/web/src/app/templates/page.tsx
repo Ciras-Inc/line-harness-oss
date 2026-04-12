@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { api } from '@/lib/api'
 import CcPromptButton from '@/components/cc-prompt-button'
 import { PageHeader } from '@/components/ui/page-header'
@@ -25,6 +25,41 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { LayoutTemplate } from 'lucide-react'
+
+// 変数挿入ユーティリティ
+function VariableButtons({ textareaRef, value, onChange }: {
+  textareaRef: React.RefObject<HTMLTextAreaElement | null>
+  value: string
+  onChange: (v: string) => void
+}) {
+  const insert = (variable: string) => {
+    const el = textareaRef.current
+    if (!el) { onChange(value + variable); return }
+    const start = el.selectionStart ?? value.length
+    const end = el.selectionEnd ?? value.length
+    const newValue = value.slice(0, start) + variable + value.slice(end)
+    onChange(newValue)
+    setTimeout(() => {
+      el.focus()
+      const pos = start + variable.length
+      el.setSelectionRange(pos, pos)
+    }, 0)
+  }
+  return (
+    <div className="flex gap-1.5 mb-1.5">
+      {['{{name}}', '{{displayName}}'].map((v) => (
+        <button
+          key={v}
+          type="button"
+          onClick={() => insert(v)}
+          className="px-2 py-0.5 text-xs font-mono bg-muted border border-border rounded hover:bg-accent transition-colors"
+        >
+          {v}
+        </button>
+      ))}
+    </div>
+  )
+}
 
 interface Template {
   id: string
@@ -98,6 +133,8 @@ export default function TemplatesPage() {
   const [formError, setFormError] = useState('')
   const [editingTemplate, setEditingTemplate] = useState<Template | null>(null)
   const [editForm, setEditForm] = useState<FormState>({ name: '', category: '', messageType: 'text', messageContent: '' })
+  const createTextareaRef = useRef<HTMLTextAreaElement>(null)
+  const editTextareaRef = useRef<HTMLTextAreaElement>(null)
   const [editSaving, setEditSaving] = useState(false)
   const [editError, setEditError] = useState('')
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
@@ -265,7 +302,13 @@ export default function TemplatesPage() {
               <label className="block text-xs font-medium text-muted-foreground mb-1">
                 メッセージ内容 <span className="text-destructive">*</span>
               </label>
+              <VariableButtons
+                textareaRef={editTextareaRef}
+                value={editForm.messageContent}
+                onChange={(v) => setEditForm({ ...editForm, messageContent: v })}
+              />
               <textarea
+                ref={editTextareaRef}
                 className={`${inputClass} resize-none`}
                 rows={5}
                 value={editForm.messageContent}
@@ -376,7 +419,13 @@ export default function TemplatesPage() {
               <label className="block text-xs font-medium text-muted-foreground mb-1">
                 メッセージ内容 <span className="text-destructive">*</span>
               </label>
+              <VariableButtons
+                textareaRef={createTextareaRef}
+                value={form.messageContent}
+                onChange={(v) => setForm({ ...form, messageContent: v })}
+              />
               <textarea
+                ref={createTextareaRef}
                 className={`${inputClass} resize-none`}
                 rows={4}
                 placeholder="メッセージ内容を入力してください"
@@ -410,61 +459,90 @@ export default function TemplatesPage() {
           action={<Button onClick={() => setShowCreate(true)}>新規テンプレート</Button>}
         />
       ) : (
-        <div className="rounded-md border border-border overflow-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>テンプレート名</TableHead>
-                <TableHead>カテゴリ</TableHead>
-                <TableHead>メッセージタイプ</TableHead>
-                <TableHead>作成日時</TableHead>
-                <TableHead className="text-right">操作</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {templates.map((template) => (
-                <TableRow key={template.id}>
-                  <TableCell>
-                    <div>
-                      <p className="text-sm font-medium">{template.name}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5 truncate max-w-xs">
-                        {template.messageContent.slice(0, 50)}
-                        {template.messageContent.length > 50 ? '...' : ''}
-                      </p>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{template.category}</Badge>
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
+        <>
+          {/* モバイル: カードリスト */}
+          <div className="sm:hidden space-y-3">
+            {templates.map((template) => (
+              <div key={template.id} className="rounded-lg border border-border bg-card p-4 space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-foreground">{template.name}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                      {template.messageContent.slice(0, 60)}{template.messageContent.length > 60 ? '...' : ''}
+                    </p>
+                  </div>
+                  <Badge variant="outline" className="shrink-0">{template.category}</Badge>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">
                     {messageTypeLabels[template.messageType] || template.messageType}
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {formatDate(template.createdAt)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleEditOpen(template)}
-                      >
-                        編集
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => setConfirmDelete(template.id)}
-                      >
-                        削除
-                      </Button>
-                    </div>
-                  </TableCell>
+                  </span>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" onClick={() => handleEditOpen(template)}>編集</Button>
+                    <Button size="sm" variant="destructive" onClick={() => setConfirmDelete(template.id)}>削除</Button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* デスクトップ: テーブル */}
+          <div className="hidden sm:block rounded-md border border-border overflow-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>テンプレート名</TableHead>
+                  <TableHead>カテゴリ</TableHead>
+                  <TableHead>メッセージタイプ</TableHead>
+                  <TableHead>作成日時</TableHead>
+                  <TableHead className="text-right">操作</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+              </TableHeader>
+              <TableBody>
+                {templates.map((template) => (
+                  <TableRow key={template.id}>
+                    <TableCell>
+                      <div>
+                        <p className="text-sm font-medium">{template.name}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5 truncate max-w-xs">
+                          {template.messageContent.slice(0, 50)}
+                          {template.messageContent.length > 50 ? '...' : ''}
+                        </p>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{template.category}</Badge>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {messageTypeLabels[template.messageType] || template.messageType}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {formatDate(template.createdAt)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleEditOpen(template)}
+                        >
+                          編集
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => setConfirmDelete(template.id)}
+                        >
+                          削除
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </>
       )}
 
       <CcPromptButton prompts={ccPrompts} />

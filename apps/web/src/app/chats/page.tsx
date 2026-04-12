@@ -6,6 +6,7 @@ import { useAccount } from '@/contexts/account-context'
 import { PageHeader } from '@/components/ui/page-header'
 import CcPromptButton from '@/components/cc-prompt-button'
 import FlexPreviewComponent from '@/components/flex-preview'
+import { Send } from 'lucide-react'
 
 interface Chat {
   id: string
@@ -253,6 +254,7 @@ export default function ChatsPage() {
   const [showLoadingIndicator, setShowLoadingIndicator] = useState(false)
   const [loadingSeconds, setLoadingSeconds] = useState(5)
   const lastLoadingTriggerAtRef = useRef<Record<string, number>>({})
+  const messageInputRef = useRef<HTMLInputElement>(null)
   const [isMessageInputFocused, setIsMessageInputFocused] = useState(false)
 
   useEffect(() => {
@@ -399,6 +401,23 @@ export default function ChatsPage() {
       e.preventDefault()
       handleSendMessage()
     }
+  }
+
+  const insertVariable = (variable: string) => {
+    const input = messageInputRef.current
+    if (!input) {
+      setMessageContent((prev) => prev + variable)
+      return
+    }
+    const start = input.selectionStart ?? messageContent.length
+    const end = input.selectionEnd ?? messageContent.length
+    const newValue = messageContent.slice(0, start) + variable + messageContent.slice(end)
+    setMessageContent(newValue)
+    setTimeout(() => {
+      input.focus()
+      const pos = start + variable.length
+      input.setSelectionRange(pos, pos)
+    }, 0)
   }
 
   return (
@@ -647,30 +666,47 @@ export default function ChatsPage() {
               </div>
 
               {/* Send Message Form */}
-              <div className="px-4 py-3 border-t border-border">
-                <div className="mb-2 flex items-center gap-3 text-xs text-gray-600">
-                  <label className="inline-flex items-center gap-2 cursor-pointer select-none">
+              <div className="px-4 py-3 border-t-2 border-border">
+                {/* ローディング設定（コンパクト） */}
+                <div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
+                  <label className="inline-flex items-center gap-1.5 cursor-pointer select-none">
                     <input
                       type="checkbox"
                       checked={showLoadingIndicator}
                       onChange={(e) => setShowLoadingIndicator(e.target.checked)}
-                      className="h-4 w-4 rounded border-border accent-primary"
+                      className="h-3.5 w-3.5 rounded border-border accent-primary"
                     />
-                    入力中ローディングを表示
+                    <span className="hidden sm:inline">入力中ローディング</span>
+                    <span className="sm:hidden">LD</span>
                   </label>
                   <select
                     value={loadingSeconds}
                     onChange={(e) => setLoadingSeconds(Number.parseInt(e.target.value, 10))}
                     disabled={!showLoadingIndicator}
-                    className="border border-border rounded-md px-2 py-1 bg-background text-foreground disabled:bg-muted disabled:text-muted-foreground"
+                    className="border border-border rounded px-1.5 py-0.5 text-xs bg-background text-foreground disabled:bg-muted disabled:text-muted-foreground"
                   >
                     {[5, 10, 15, 20, 30, 45, 60].map((sec) => (
                       <option key={sec} value={sec}>{sec}秒</option>
                     ))}
                   </select>
                 </div>
+                {/* 変数挿入ボタン */}
+                <div className="flex gap-1.5 mb-2">
+                  {['{{name}}', '{{displayName}}'].map((v) => (
+                    <button
+                      key={v}
+                      type="button"
+                      onClick={() => insertVariable(v)}
+                      className="px-2 py-0.5 text-xs font-mono bg-muted border border-border rounded hover:bg-accent transition-colors"
+                    >
+                      {v}
+                    </button>
+                  ))}
+                </div>
+                {/* 入力＋送信 */}
                 <div className="flex items-center gap-2">
                   <input
+                    ref={messageInputRef}
                     type="text"
                     value={messageContent}
                     onChange={(e) => {
@@ -694,9 +730,14 @@ export default function ChatsPage() {
                   <button
                     onClick={handleSendMessage}
                     disabled={sending || !messageContent.trim()}
-                    className="px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex-shrink-0 p-2.5 bg-primary text-primary-foreground rounded-lg transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                    aria-label="送信"
                   >
-                    {sending ? '送信中...' : '送信'}
+                    {sending ? (
+                      <span className="block w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Send size={16} />
+                    )}
                   </button>
                 </div>
               </div>
