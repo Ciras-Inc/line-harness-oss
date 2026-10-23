@@ -270,3 +270,8 @@ Issue・PR 歓迎。[Wiki](https://github.com/Shudesu/line-harness-oss/wiki) を
 ## ライセンス
 
 MIT
+
+## 2026年10月のセキュリティ更新
+
+Next.jsの更新内容と、Node.js・LIFFの確認事項は[セキュリティ更新手順](docs/security-update-2026-10.md)を参照してください。
+
