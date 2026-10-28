@@ -21,7 +21,8 @@
     "decision_procedure",
     "work_contract",
     "quality_details",
-    "repository_distribution"
+    "repository_distribution",
+    "repository_specific_requirements"
   ],
   "properties": {
     "policy_id": {

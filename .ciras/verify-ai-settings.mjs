@@ -13,6 +13,7 @@ export const REQUIRED_FILES = Object.freeze([
   'AGENTS.md', 'CLAUDE.md', '.cursor/rules/ciras-repository.mdc',
   '00_CIRAS_POLICY.json', '.ciras/repository-context.md',
   '.ciras/ai-profile.json', '.ciras/verify-ai-settings.mjs', 'docs/AI_SETTINGS.md',
+  '.ciras/governance-release.yaml', '.ciras/policy.schema.json', 'README.md',
 ]);
 export const HEADINGS = Object.freeze([
   '役割', '成功条件', '許可範囲', '禁止の正本（JSON参照）', '止めて返すもの', '承認待ち',
@@ -38,14 +39,15 @@ export function forbiddenPath(relative) {
   const parts = relative.split('/');
   if (parts.some((p) => !p || p === '.' || p === '..')) return true;
   if (parts.some((p) => /^(\.git|\.ssh|\.aws|credentials)$/i.test(p))) return true;
+  if (parts.some((p, index) => p.toLowerCase() === '.config' && parts[index + 1]?.toLowerCase() === 'gh')) return true;
   const base = parts.at(-1);
   if (/^(\.env(?:\..*)?|\.dev\.vars(?:\..*)?|\.npmrc|\.netrc|\.git-credentials|\.pypirc)$/i.test(base)) return true;
   if (/\.(pem|key|p12|pfx)$/i.test(base) || /^id_(rsa|ed25519|ecdsa)/i.test(base)) return true;
   if (/credentials-ledger|^key-rotation\.jsonl$/i.test(base)) return true;
   if (/^(05_PROFILE|06_PROFILE)|PROFILE_(SUGIMOTO|KATAOKA)/i.test(base)) return true;
   if (parts.some((p) => /^(audit_archive|91_旧履歴_実行対象外|98_R1履歴)$/i.test(p))) return true;
-  if (/^(\.mcp\.json|\.claude\.json|\.codex\/auth\.json|\.cursor\/mcp\.json)$/.test(relative)) return true;
-  if (/^\.claude\/settings(?:\.local)?\.json$/.test(relative)) return true;
+  if (/(?:^|\/)(?:\.mcp\.json|\.claude\.json|\.codex\/auth\.json|\.cursor\/mcp\.json)$/.test(relative)) return true;
+  if (/(?:^|\/)\.claude\/settings(?:\.local)?\.json$/.test(relative)) return true;
   return false;
 }
 
@@ -55,9 +57,7 @@ function outside(root, target) {
 }
 
 function hasArchiveKey(value) {
-  if (Array.isArray(value)) return value.some(hasArchiveKey);
-  if (!record(value)) return false;
-  return Object.entries(value).some(([key, child]) => key === 'audit_archive' || hasArchiveKey(child));
+  return containsAnyKey(value, new Set(['audit_archive']));
 }
 
 function outsideMarkdownFences(text) {
@@ -85,23 +85,151 @@ function validCursorFrontmatter(text) {
     if (!field || fields.has(field[1])) return false;
     let value = field[2];
     if (field[1] === 'description') {
-      if (!value || '[]{},&*!|>@%`'.includes(value[0])) return false;
-      if (value.startsWith('"')) {
-        try { if (typeof JSON.parse(value) !== 'string') return false; }
-        catch { return false; }
-      } else if (value.startsWith("'") && !/^'(?:[^']|'')*'$/.test(value)) return false;
+      // Preserve the generated plain scalar exactly; other descriptions must use a
+      // nonempty JSON-quoted string (a deliberately restricted YAML string subset).
+      if (value !== 'Ciras repository instructions and execution-surface guidance') {
+        try {
+          const description = JSON.parse(value);
+          if (typeof description !== 'string' || !description.trim()) return false;
+        } catch { return false; }
+      }
     }
     fields.set(field[1], value);
   }
-  return fields.get('alwaysApply') === 'true';
+  return fields.has('description') && fields.get('alwaysApply') === 'true';
+}
+
+// Deliberately bounded evaluator for the vocabulary in the bundled policy schema.
+// Not a general Draft 2020-12 implementation; no $ref, external resolution, or arbitrary regex.
+export function validateBundledPolicy(schema, value) {
+  const errors = [];
+  const fail = (where, reason) => { if (errors.length < 32) errors.push(`${where}: ${reason}`); };
+  const keywords = new Set(['$schema', '$id', 'title', 'type', 'const', 'enum', 'required', 'properties',
+    'additionalProperties', 'items', 'minItems', 'maxItems', 'minProperties', 'maxProperties', 'propertyNames', 'pattern']);
+  let schemaNodes = 0;
+  function inspect(node, where = '$schema', depth = 0) {
+    if (++schemaNodes > 4096 || depth > 64) { fail(where, 'schema evaluation bound exceeded'); return; }
+    if (!record(node)) { fail(where, 'schema object required'); return; }
+    for (const [key, child] of Object.entries(node)) {
+      if (!keywords.has(key)) { fail(where, `unsupported schema keyword ${key}`); continue; }
+      if (['$schema', '$id', 'title'].includes(key) && typeof child !== 'string') fail(where, `${key} must be string`);
+      if (key === '$schema' && child !== 'https://json-schema.org/draft/2020-12/schema') fail(where, 'unsupported schema dialect');
+      if (key === 'type' && !['object', 'array', 'string', 'integer'].includes(child)) fail(where, 'unsupported schema type');
+      if (key === 'const' && typeof child !== 'string') fail(where, 'only string const is supported');
+      if (key === 'enum' && (!Array.isArray(child) || !child.length || !child.every(x => typeof x === 'string'))) fail(where, 'only nonempty string enum is supported');
+      if (key === 'required' && (!Array.isArray(child) || !child.every(x => typeof x === 'string') || new Set(child).size !== child.length)) fail(where, 'invalid required');
+      if (['minItems', 'maxItems', 'minProperties', 'maxProperties'].includes(key) && (!Number.isSafeInteger(child) || child < 0)) fail(where, `invalid ${key}`);
+      if (key === 'pattern' && child !== '^Ciras-Inc/[A-Za-z0-9_.-]+$') fail(where, 'unsupported schema pattern');
+      if (key === 'properties') {
+        if (!record(child)) fail(where, 'properties must be object');
+        else for (const [name, sub] of Object.entries(child)) inspect(sub, `${where}/properties/${name}`, depth + 1);
+      }
+      if (['items', 'propertyNames'].includes(key)) inspect(child, `${where}/${key}`, depth + 1);
+      if (key === 'additionalProperties' && typeof child !== 'boolean') inspect(child, `${where}/${key}`, depth + 1);
+    }
+  }
+  inspect(schema);
+  if (errors.length) return errors;
+  let visits = 0;
+  function check(node, item, where = '$policy', depth = 0) {
+    if (++visits > 100000 || depth > 64) { fail(where, 'policy evaluation bound exceeded'); return; }
+    const matches = { object: record(item), array: Array.isArray(item), string: typeof item === 'string', integer: Number.isInteger(item) };
+    if (node.type && !matches[node.type]) { fail(where, `expected ${node.type}`); return; }
+    if (Object.hasOwn(node, 'const') && item !== node.const) fail(where, 'const mismatch');
+    if (node.enum && !node.enum.includes(item)) fail(where, 'enum mismatch');
+    if (node.pattern && typeof item === 'string' && !/^Ciras-Inc\/[A-Za-z0-9_.-]+$/.test(item)) fail(where, 'pattern mismatch');
+    if (record(item)) {
+      const keys = Object.keys(item);
+      if (node.minProperties !== undefined && keys.length < node.minProperties) fail(where, 'too few properties');
+      if (node.maxProperties !== undefined && keys.length > node.maxProperties) fail(where, 'too many properties');
+      for (const key of node.required ?? []) if (!Object.hasOwn(item, key)) fail(where, `required ${key}`);
+      for (const key of keys) {
+        if (node.propertyNames) check(node.propertyNames, key, `${where}/propertyNames`, depth + 1);
+        if (node.properties && Object.hasOwn(node.properties, key)) check(node.properties[key], item[key], `${where}/${key}`, depth + 1);
+        else if (node.additionalProperties === false) fail(where, `unknown property ${key}`);
+        else if (record(node.additionalProperties)) check(node.additionalProperties, item[key], `${where}/${key}`, depth + 1);
+      }
+    }
+    if (Array.isArray(item)) {
+      if (node.minItems !== undefined && item.length < node.minItems) fail(where, 'too few items');
+      if (node.maxItems !== undefined && item.length > node.maxItems) fail(where, 'too many items');
+      if (node.items) for (let index = 0; index < item.length && visits <= 100000; index++) check(node.items, item[index], `${where}/${index}`, depth + 1);
+    }
+  }
+  check(schema, value);
+  return errors;
+}
+
+function containsAnyKey(value, forbidden) {
+  const pending = [value];
+  let visited = 0;
+  while (pending.length) {
+    if (++visited > 100000) return true; // Fail closed for an oversized nested profile.
+    const node = pending.pop();
+    if (Array.isArray(node)) for (const child of node) pending.push(child);
+    else if (record(node)) for (const [key, child] of Object.entries(node)) {
+      if (forbidden.has(key)) return true;
+      pending.push(child);
+    }
+  }
+  return false;
+}
+
+// Only the generator-owned terminal section is parsed. The inherited prefix is preserved,
+// not interpreted as authorization; YAML aliases, duplicate fields and unknown fields fail.
+function releaseMatches(text, manifest) {
+  const lines = text.split(/\r?\n/);
+  const sections = lines.flatMap((line, index) => /^(?:ai_repository_settings|"ai_repository_settings"|'ai_repository_settings')\s*:/.test(line) ? [index] : []);
+  if (sections.length !== 1 || lines[sections[0]] !== 'ai_repository_settings:') return false;
+  const expected = {
+    policy_id: manifest.policy_id, source_repository: manifest.source_repository,
+    source_commit: manifest.source_commit, source_path: 'control-plane/core/00_CIRAS_POLICY.json',
+    generator_version: manifest.generator_version, profile_id: manifest.profile_id,
+    manifest: MANIFEST_PATH, adoption_status: 'basis-adopted',
+    final_reflection: 'track-by-PR-and-head-sha', native_runtime_verified: false,
+  };
+  const parsed = Object.create(null);
+  for (const line of lines.slice(sections[0] + 1)) {
+    if (!line.trim()) continue;
+    const field = line.match(/^[ ]{2}([a-z_]+): (?:'([^'\r\n]*)'|(false))$/);
+    if (!field || !Object.hasOwn(expected, field[1]) || Object.hasOwn(parsed, field[1])) return false;
+    parsed[field[1]] = field[3] ? false : field[2];
+  }
+  return Object.keys(expected).every(key => Object.hasOwn(parsed, key) && parsed[key] === expected[key]);
+}
+
+const nonempty = value => typeof value === 'string' && value.trim().length > 0;
+const strings = value => Array.isArray(value) && value.every(nonempty);
+export function validRepositoryProfile(profile) {
+  if (!record(profile)) return false;
+  const fields = ['schema_version', 'policy_id', 'repository', 'profile_id', 'base_commit', 'default_branch',
+    'classification', 'native_runtime_verified', 'protected_branch_conditions', 'required_checks',
+    'local_check_commands', 'existing_native_settings', 'runtime_test_status', 'legacy_branch_protection_status'];
+  if (Object.keys(profile).length !== fields.length || !fields.every(key => Object.hasOwn(profile, key))) return false;
+  if (!(profile.base_commit === null || (typeof profile.base_commit === 'string' && COMMIT.test(profile.base_commit))) ||
+      !nonempty(profile.default_branch) || !['active', 'archived_hold', 'empty_hold'].includes(profile.classification) ||
+      !nonempty(profile.runtime_test_status) || !nonempty(profile.legacy_branch_protection_status) ||
+      !strings(profile.required_checks) || !strings(profile.existing_native_settings)) return false;
+  if (!Array.isArray(profile.protected_branch_conditions) || !profile.protected_branch_conditions.every(rule =>
+    record(rule) && Number.isSafeInteger(rule.ruleset_id) && rule.ruleset_id > 0 && record(rule.ref_name) &&
+    strings(rule.ref_name.include) && strings(rule.ref_name.exclude))) return false;
+  const requiredCommand = ['command', 'source_path', 'source_blob_sha', 'execution_status', 'safety'];
+  const optionalCommand = ['script_name', 'script_body', 'job'];
+  return Array.isArray(profile.local_check_commands) && profile.local_check_commands.every(command =>
+    record(command) && requiredCommand.every(key => nonempty(command[key])) && COMMIT.test(command.source_blob_sha) &&
+    !forbiddenPath(command.source_path) && optionalCommand.every(key => !Object.hasOwn(command, key) || nonempty(command[key])) &&
+    (!Object.hasOwn(command, 'working_directory') || command.working_directory === null || nonempty(command.working_directory)) &&
+    Object.keys(command).every(key => [...requiredCommand, ...optionalCommand, 'working_directory'].includes(key)));
 }
 
 /**
  * Verify generated bytes and their local contracts without executing repository code.
  * expectedManifestSha256 must come from a separately trusted source to anchor bytes.
+ * expectedRepository must come from the deployment target, not from the candidate itself.
+ * Requires an immutable isolated checkout; concurrent filesystem writers are outside this static tool.
  * A syntactically valid source_commit is not evidence that the commit exists or is approved.
  */
-export function verify(root, { expectedManifestSha256 } = {}) {
+export function verify(root, { expectedManifestSha256, expectedRepository } = {}) {
   const checks = [];
   const errors = [];
   const add = (id, ok, message) => {
@@ -176,7 +304,14 @@ export function verify(root, { expectedManifestSha256 } = {}) {
   add('manifest-policy', manifest.policy_id === POLICY_ID, 'Manifest policy_id must match adopted R2.1.');
   add('manifest-source', manifest.source_repository === 'Ciras-Inc/ciras-os' && COMMIT.test(manifest.source_commit ?? ''),
     'Source repository and 40-hex commit format checked; existence and approval are not inferred.');
-  add('manifest-generator', manifest.generator_version === '1.0.1', 'Generator version must be 1.0.1.');
+  add('manifest-generator', manifest.generator_version === '1.0.3', 'Generator version must be 1.0.3.');
+  if (expectedRepository !== undefined) {
+    add('expected-repository', typeof expectedRepository === 'string' && /^Ciras-Inc\/[A-Za-z0-9_.-]+$/.test(expectedRepository) &&
+      !['.', '..'].includes(expectedRepository.split('/')[1]) && manifest.profile_id === expectedRepository,
+      'Manifest target matches separately supplied expected repository.');
+  } else {
+    add('repository-unbound', true, 'No external target supplied; repository identity is self-declared local consistency only.');
+  }
   add('manifest-profile', typeof manifest.profile_id === 'string' && REPO.test(manifest.profile_id) &&
     manifest.profile_id.startsWith('Ciras-Inc/') && !['.', '..'].includes(manifest.profile_id.split('/')[1]),
     'Profile must identify the target Ciras-Inc repository.');
@@ -232,8 +367,14 @@ export function verify(root, { expectedManifestSha256 } = {}) {
   add('cursor-minimal', contents.get('.cursor/rules/ciras-repository.mdc').length <= 8192,
     'Cursor bridge remains short.');
 
+  add('release-contract', releaseMatches(utf8('.ciras/governance-release.yaml'), manifest),
+    'Generated release section is complete, unambiguous, and consistent with manifest source/version/target.');
+  const schema = parse(contents.get('.ciras/policy.schema.json'), '.ciras/policy.schema.json');
   const policy = parse(contents.get('00_CIRAS_POLICY.json'), '00_CIRAS_POLICY.json');
   if (policy) {
+    const schemaErrors = schema ? validateBundledPolicy(schema, policy) : ['Missing valid schema'];
+    add('policy-schema', schemaErrors.length === 0, schemaErrors.length ? schemaErrors.join('; ') :
+      'Policy satisfies the bundled bounded schema vocabulary; not a general Draft 2020-12 evaluator.');
     add('policy-id', policy.policy_id === POLICY_ID, 'Policy ID matches manifest.');
     add('policy-history', !hasArchiveKey(policy), 'Policy does not embed audit_archive history.');
     const supplements = policy.repository_specific_requirements;
@@ -253,11 +394,14 @@ export function verify(root, { expectedManifestSha256 } = {}) {
     add('profile-version', profile.schema_version === 1 && profile.policy_id === POLICY_ID, 'Profile schema and policy versions match.');
     add('profile-repository', profile.repository === manifest.profile_id && profile.profile_id === manifest.profile_id,
       'Profile identifiers both match the manifest target.');
+    add('profile-fields', validRepositoryProfile(profile), 'Repository profile has required operational fields and valid types; command completeness requires source review.');
+    add('profile-base', profile.base_commit === manifest.base_commit, 'Profile base commit matches manifest.');
     add('profile-runtime', profile.native_runtime_verified === false, 'Profile does not claim product runtime verification.');
     add('profile-history', !hasArchiveKey(profile), 'Profile does not embed historical execution archives.');
-    add('profile-not-personal', !['user_key', 'display_name', 'can_approve_company_decisions', 'owner_decision_approver_key', 'permissions'].some((key) => Object.hasOwn(profile, key)),
+    add('profile-not-personal', !containsAnyKey(profile, new Set(['user_key', 'display_name', 'can_approve_company_decisions', 'owner_decision_approver_key', 'permissions'])),
       'Repository profile must not distribute personal identity or approval-authority fields.');
   }
+  add('immutable-checkout-required', true, 'Run only against an immutable isolated checkout. Path checks do not prevent concurrent parent-directory replacement and are not an OS security boundary.');
   add('static-scope', true, 'Checks cover stored bytes and static contracts only; they do not authenticate users, approve deployment, or prove native enforcement.');
   return done();
 }
@@ -265,16 +409,18 @@ export function verify(root, { expectedManifestSha256 } = {}) {
 function main(argv) {
   let root;
   let expectedManifestSha256;
+  let expectedRepository;
   for (let index = 0; index < argv.length; index++) {
     const option = argv[index];
-    if ((option === '--root' || option === '--expected-manifest-sha256') && index + 1 < argv.length) {
+    if ((option === '--root' || option === '--expected-manifest-sha256' || option === '--expected-repository') && index + 1 < argv.length) {
       if (option === '--root' && root === undefined) root = argv[++index];
       else if (option === '--expected-manifest-sha256' && expectedManifestSha256 === undefined) expectedManifestSha256 = argv[++index];
+      else if (option === '--expected-repository' && expectedRepository === undefined) expectedRepository = argv[++index];
       else throw new Error('Duplicate argument.');
-    } else throw new Error('Usage: node verify.mjs --root <repo> [--expected-manifest-sha256 <trustedhash>]');
+    } else throw new Error('Usage: node verify.mjs --root <repo> [--expected-manifest-sha256 <trustedhash>] [--expected-repository <owner/repo>]');
   }
   if (!root) throw new Error('Missing --root.');
-  const result = verify(root, { expectedManifestSha256 });
+  const result = verify(root, { expectedManifestSha256, expectedRepository });
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
   process.exitCode = result.ok ? 0 : 1;
 }

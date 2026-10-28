@@ -4,9 +4,9 @@ schema_version: 1
 ai_repository_settings:
   policy_id: 'CIRAS-SUCCESS-20261028-R2.1'
   source_repository: 'Ciras-Inc/ciras-os'
-  source_commit: 'bf55c93a9f3a857c0100cdb7097cbcced4b2553a'
+  source_commit: 'a10e91e9b577609517084329d088743f50c8f083'
   source_path: 'control-plane/core/00_CIRAS_POLICY.json'
-  generator_version: '1.0.1'
+  generator_version: '1.0.3'
   profile_id: 'Ciras-Inc/line-harness-oss'
   manifest: '.ciras/ai-settings-manifest.json'
   adoption_status: 'basis-adopted'

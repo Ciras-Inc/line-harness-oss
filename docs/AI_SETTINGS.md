@@ -4,8 +4,8 @@
 
 ## 配布版
 
-- 正本：Ciras-Inc/ciras-os の commit `bf55c93a9f3a857c0100cdb7097cbcced4b2553a`
-- 生成器：`1.0.1`
+- 正本：Ciras-Inc/ciras-os の commit `a10e91e9b577609517084329d088743f50c8f083`
+- 生成器：`1.0.3`
 - 対象：`Ciras-Inc/line-harness-oss`
 - 既定branch：`main`
 - 配布台帳：`.ciras/governance-release.yaml`
@@ -13,7 +13,7 @@
 
 ## 確認と更新
 
-`node .ciras/verify-ai-settings.mjs --root .` で構成・hashを確認します。最終配布検査は固定元の検査器と別に固定したmanifest hashを使います。候補内の検査器・hashだけでは承認や改ざん耐性の証拠になりません。
+`node .ciras/verify-ai-settings.mjs --root . --expected-repository Ciras-Inc/line-harness-oss` で構成・hashを確認します。最終配布検査は固定元の検査器、別に固定したmanifest hash、配布先から別に確定したexpected-repositoryを使います。hashなしはローカル整合のみ、対象指定なしはrepo名の自己申告のみを検査します。検査中に変更されない隔離checkoutを使い、同時書換えへのOS隔離はこの静的検査器では保証しません。候補内の検査器・hashだけでは承認や改ざん耐性の証拠になりません。
 
 設定更新は作業branchとPRで行い、共通規則は固定元の生成器から再生成します。既存の必須チェック・レビュー・本人実行条件を守ります。既存の権限、hook、sandbox、Ruleset、共有・課金設定はこの配布で変更しません。
 
