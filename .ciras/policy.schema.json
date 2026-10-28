@@ -1,0 +1,697 @@
+{
+  "type": "object",
+  "required": [
+    "policy_id",
+    "schema_version",
+    "status",
+    "date_jst",
+    "schema_role",
+    "scope",
+    "precedence",
+    "役割",
+    "成功条件",
+    "許可範囲",
+    "禁止の正本（JSON参照）",
+    "止めて返すもの",
+    "承認待ち",
+    "review_contract",
+    "technical_control_requirements",
+    "security_update_workflow",
+    "operating_rules",
+    "decision_procedure",
+    "work_contract",
+    "quality_details",
+    "repository_distribution"
+  ],
+  "properties": {
+    "policy_id": {
+      "const": "CIRAS-SUCCESS-20261028-R2.1"
+    },
+    "schema_version": {
+      "type": "integer"
+    },
+    "status": {
+      "type": "string"
+    },
+    "date_jst": {
+      "type": "string"
+    },
+    "schema_role": {
+      "type": "string"
+    },
+    "scope": {
+      "type": "string"
+    },
+    "precedence": {
+      "type": "object",
+      "required": [
+        "instruction_order",
+        "not_activated",
+        "conflict_or_unreadable",
+        "one_source",
+        "adoption_boundary"
+      ],
+      "properties": {
+        "instruction_order": {
+          "type": "string"
+        },
+        "not_activated": {
+          "type": "string"
+        },
+        "conflict_or_unreadable": {
+          "type": "string"
+        },
+        "one_source": {
+          "type": "string"
+        },
+        "adoption_boundary": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "役割": {
+      "type": "object",
+      "required": [
+        "purpose",
+        "perspectives",
+        "authority"
+      ],
+      "properties": {
+        "purpose": {
+          "type": "string"
+        },
+        "perspectives": {
+          "type": "object",
+          "required": [
+            "鳥の目",
+            "虫の目",
+            "魚の目"
+          ],
+          "properties": {
+            "鳥の目": {
+              "type": "string"
+            },
+            "虫の目": {
+              "type": "string"
+            },
+            "魚の目": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "authority": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "成功条件": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "許可範囲": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "禁止の正本（JSON参照）": {
+      "type": "object",
+      "required": [
+        "canonical_file",
+        "group_order",
+        "rules"
+      ],
+      "properties": {
+        "canonical_file": {
+          "type": "string"
+        },
+        "group_order": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "rules": {
+          "type": "array",
+          "minItems": 13,
+          "maxItems": 13,
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "group",
+              "decision",
+              "scope",
+              "approved_behavior"
+            ],
+            "properties": {
+              "id": {
+                "enum": [
+                  "S01",
+                  "C01",
+                  "A01-SELF",
+                  "R01",
+                  "G01",
+                  "G02",
+                  "G03",
+                  "D01",
+                  "P01",
+                  "N01",
+                  "B01",
+                  "B02-CONTRACT",
+                  "A01-CHANGE"
+                ]
+              },
+              "group": {
+                "type": "string"
+              },
+              "decision": {
+                "enum": [
+                  "stop_and_return",
+                  "stop_unauthorized_import",
+                  "approval_required"
+                ]
+              },
+              "scope": {
+                "type": "string"
+              },
+              "approved_behavior": {
+                "type": "string"
+              },
+              "details": {
+                "type": "object"
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "止めて返すもの": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "承認待ち": {
+      "type": "object",
+      "required": [
+        "classes",
+        "approval_binding",
+        "reuse",
+        "resume",
+        "partial_hold"
+      ],
+      "properties": {
+        "classes": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "approval_binding": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "reuse": {
+          "type": "string"
+        },
+        "resume": {
+          "type": "string"
+        },
+        "partial_hold": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "review_contract": {
+      "type": "object",
+      "required": [
+        "applies_when",
+        "instruction",
+        "output",
+        "evidence"
+      ],
+      "properties": {
+        "applies_when": {
+          "type": "string"
+        },
+        "instruction": {
+          "type": "string"
+        },
+        "output": {
+          "type": "object",
+          "required": [
+            "pass",
+            "fail",
+            "unverified"
+          ],
+          "properties": {
+            "pass": {
+              "type": "string"
+            },
+            "fail": {
+              "type": "string"
+            },
+            "unverified": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "evidence": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "technical_control_requirements": {
+      "type": "object",
+      "required": [
+        "status",
+        "layers",
+        "required_synthetic_tests",
+        "record_fields",
+        "activation_gate",
+        "mapping"
+      ],
+      "properties": {
+        "status": {
+          "type": "string"
+        },
+        "layers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "required_synthetic_tests": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "record_fields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "activation_gate": {
+          "type": "string"
+        },
+        "mapping": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "security_update_workflow": {
+      "type": "object",
+      "required": [
+        "status",
+        "at_work_start",
+        "after_change",
+        "periodic_candidate",
+        "response",
+        "check_record",
+        "limitation"
+      ],
+      "properties": {
+        "status": {
+          "type": "string"
+        },
+        "at_work_start": {
+          "type": "string"
+        },
+        "after_change": {
+          "type": "string"
+        },
+        "periodic_candidate": {
+          "type": "string"
+        },
+        "response": {
+          "type": "string"
+        },
+        "check_record": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "limitation": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "operating_rules": {
+      "type": "object",
+      "required": [
+        "communication",
+        "environment_line",
+        "progress",
+        "evidence_states",
+        "artifacts",
+        "notion",
+        "delegation",
+        "source_loading",
+        "quality",
+        "additional_review"
+      ],
+      "properties": {
+        "communication": {
+          "type": "string"
+        },
+        "environment_line": {
+          "type": "string"
+        },
+        "progress": {
+          "type": "string"
+        },
+        "evidence_states": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "artifacts": {
+          "type": "string"
+        },
+        "notion": {
+          "type": "string"
+        },
+        "delegation": {
+          "type": "string"
+        },
+        "source_loading": {
+          "type": "string"
+        },
+        "quality": {
+          "type": "string"
+        },
+        "additional_review": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "decision_procedure": {
+      "type": "object",
+      "required": [
+        "input",
+        "order",
+        "multiple_effects"
+      ],
+      "properties": {
+        "input": {
+          "type": "string"
+        },
+        "order": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "multiple_effects": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "work_contract": {
+      "type": "object",
+      "required": [
+        "applies_to",
+        "start_fields",
+        "phase_separation",
+        "state_model",
+        "concurrency",
+        "retry",
+        "stop",
+        "restore",
+        "notification",
+        "implementation_status"
+      ],
+      "properties": {
+        "applies_to": {
+          "type": "string"
+        },
+        "start_fields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "phase_separation": {
+          "type": "object",
+          "required": [
+            "start",
+            "result",
+            "final_action"
+          ],
+          "properties": {
+            "start": {
+              "type": "string"
+            },
+            "result": {
+              "type": "string"
+            },
+            "final_action": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "state_model": {
+          "type": "object",
+          "required": [
+            "awaiting_approval",
+            "queued",
+            "claimed",
+            "running",
+            "result_received",
+            "verified",
+            "completed",
+            "blocked",
+            "outcome_unknown",
+            "stopped",
+            "failed",
+            "restore_reconciliation"
+          ],
+          "properties": {
+            "awaiting_approval": {
+              "type": "string"
+            },
+            "queued": {
+              "type": "string"
+            },
+            "claimed": {
+              "type": "string"
+            },
+            "running": {
+              "type": "string"
+            },
+            "result_received": {
+              "type": "string"
+            },
+            "verified": {
+              "type": "string"
+            },
+            "completed": {
+              "type": "string"
+            },
+            "blocked": {
+              "type": "string"
+            },
+            "outcome_unknown": {
+              "type": "string"
+            },
+            "stopped": {
+              "type": "string"
+            },
+            "failed": {
+              "type": "string"
+            },
+            "restore_reconciliation": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "concurrency": {
+          "type": "string"
+        },
+        "retry": {
+          "type": "string"
+        },
+        "stop": {
+          "type": "string"
+        },
+        "restore": {
+          "type": "string"
+        },
+        "notification": {
+          "type": "string"
+        },
+        "implementation_status": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "quality_details": {
+      "type": "object",
+      "required": [
+        "scope",
+        "receiving",
+        "calculation",
+        "artifact_checks",
+        "writing",
+        "claims",
+        "sources",
+        "skills",
+        "development",
+        "review_efficiency",
+        "resource_adoption",
+        "artifact_prompt"
+      ],
+      "properties": {
+        "scope": {
+          "type": "string"
+        },
+        "receiving": {
+          "type": "string"
+        },
+        "calculation": {
+          "type": "string"
+        },
+        "artifact_checks": {
+          "type": "object",
+          "required": [
+            "文書/メール/提案",
+            "表計算/報告",
+            "スライド/印刷物",
+            "アプリ/サイト",
+            "設定/自動化",
+            "調査/新事業"
+          ],
+          "properties": {
+            "文書/メール/提案": {
+              "type": "string"
+            },
+            "表計算/報告": {
+              "type": "string"
+            },
+            "スライド/印刷物": {
+              "type": "string"
+            },
+            "アプリ/サイト": {
+              "type": "string"
+            },
+            "設定/自動化": {
+              "type": "string"
+            },
+            "調査/新事業": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "writing": {
+          "type": "string"
+        },
+        "claims": {
+          "type": "string"
+        },
+        "sources": {
+          "type": "string"
+        },
+        "skills": {
+          "type": "string"
+        },
+        "development": {
+          "type": "string"
+        },
+        "review_efficiency": {
+          "type": "string"
+        },
+        "resource_adoption": {
+          "type": "string"
+        },
+        "artifact_prompt": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "repository_distribution": {
+      "type": "object",
+      "required": [
+        "status",
+        "scope",
+        "preservation",
+        "source",
+        "snapshot",
+        "schema",
+        "format",
+        "release",
+        "test"
+      ],
+      "properties": {
+        "status": {
+          "type": "string"
+        },
+        "scope": {
+          "type": "string"
+        },
+        "preservation": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "snapshot": {
+          "type": "string"
+        },
+        "schema": {
+          "type": "string"
+        },
+        "format": {
+          "type": "string"
+        },
+        "release": {
+          "type": "string"
+        },
+        "test": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "repository_specific_requirements": {
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 1,
+      "propertyNames": {
+        "pattern": "^Ciras-Inc/[A-Za-z0-9_.-]+$"
+      },
+      "additionalProperties": {
+        "type": "object"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Ciras-Inc/ciras-os/policy.schema.json",
+  "title": "Ciras AI policy distribution schema"
+}

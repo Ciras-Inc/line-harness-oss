@@ -1,0 +1,14 @@
+# Ciras AI repository settings release
+schema_version: 1
+
+ai_repository_settings:
+  policy_id: 'CIRAS-SUCCESS-20261028-R2.1'
+  source_repository: 'Ciras-Inc/ciras-os'
+  source_commit: 'bf55c93a9f3a857c0100cdb7097cbcced4b2553a'
+  source_path: 'control-plane/core/00_CIRAS_POLICY.json'
+  generator_version: '1.0.1'
+  profile_id: 'Ciras-Inc/line-harness-oss'
+  manifest: '.ciras/ai-settings-manifest.json'
+  adoption_status: 'basis-adopted'
+  final_reflection: 'track-by-PR-and-head-sha'
+  native_runtime_verified: false
