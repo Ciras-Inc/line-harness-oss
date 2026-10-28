@@ -110,14 +110,62 @@
     },
     "成功条件": {
       "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
       "items": {
-        "type": "object"
+        "type": "object",
+        "required": [
+          "id",
+          "text",
+          "evidence"
+        ],
+        "properties": {
+          "id": {
+            "enum": [
+              "SC1",
+              "SC2",
+              "SC3",
+              "SC4"
+            ]
+          },
+          "text": {
+            "type": "string"
+          },
+          "evidence": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
       }
     },
     "許可範囲": {
       "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
       "items": {
-        "type": "object"
+        "type": "object",
+        "required": [
+          "id",
+          "text",
+          "boundary"
+        ],
+        "properties": {
+          "id": {
+            "enum": [
+              "AL1",
+              "AL2",
+              "AL3",
+              "AL4"
+            ]
+          },
+          "text": {
+            "type": "string"
+          },
+          "boundary": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
       }
     },
     "禁止の正本（JSON参照）": {
@@ -684,7 +732,7 @@
       "minProperties": 1,
       "maxProperties": 1,
       "propertyNames": {
-        "pattern": "^Ciras-Inc/[A-Za-z0-9_.-]+$"
+        "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?/[A-Za-z0-9_.-]{1,100}$"
       },
       "additionalProperties": {
         "type": "object"

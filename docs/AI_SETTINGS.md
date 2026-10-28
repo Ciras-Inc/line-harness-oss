@@ -4,8 +4,8 @@
 
 ## 配布版
 
-- 正本：Ciras-Inc/ciras-os の commit `a10e91e9b577609517084329d088743f50c8f083`
-- 生成器：`1.0.3`
+- 正本：Ciras-Inc/ciras-os の commit `500db22a50d493566cde9c1617355cec5156134b`
+- 生成器：`1.0.4`
 - 対象：`Ciras-Inc/line-harness-oss`
 - 既定branch：`main`
 - 配布台帳：`.ciras/governance-release.yaml`

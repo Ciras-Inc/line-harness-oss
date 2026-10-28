@@ -27,7 +27,11 @@ const RULE_DECISIONS = Object.freeze({
 });
 const HASH = /^[0-9a-f]{64}$/;
 const COMMIT = /^[0-9a-f]{40}$/;
-const REPO = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
+export const REPOSITORY_PATTERN = '^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?/[A-Za-z0-9_.-]{1,100}$';
+const REPO = new RegExp(REPOSITORY_PATTERN);
+export function validRepositoryIdentifier(value) {
+  return typeof value === 'string' && REPO.test(value) && !['.', '..'].includes(value.split('/')[1]);
+}
 const MAX_FILE_BYTES = 8 * 1024 * 1024;
 const sha256 = (value) => createHash('sha256').update(value).digest('hex');
 const record = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -119,7 +123,7 @@ export function validateBundledPolicy(schema, value) {
       if (key === 'enum' && (!Array.isArray(child) || !child.length || !child.every(x => typeof x === 'string'))) fail(where, 'only nonempty string enum is supported');
       if (key === 'required' && (!Array.isArray(child) || !child.every(x => typeof x === 'string') || new Set(child).size !== child.length)) fail(where, 'invalid required');
       if (['minItems', 'maxItems', 'minProperties', 'maxProperties'].includes(key) && (!Number.isSafeInteger(child) || child < 0)) fail(where, `invalid ${key}`);
-      if (key === 'pattern' && child !== '^Ciras-Inc/[A-Za-z0-9_.-]+$') fail(where, 'unsupported schema pattern');
+      if (key === 'pattern' && child !== REPOSITORY_PATTERN) fail(where, 'unsupported schema pattern');
       if (key === 'properties') {
         if (!record(child)) fail(where, 'properties must be object');
         else for (const [name, sub] of Object.entries(child)) inspect(sub, `${where}/properties/${name}`, depth + 1);
@@ -137,7 +141,7 @@ export function validateBundledPolicy(schema, value) {
     if (node.type && !matches[node.type]) { fail(where, `expected ${node.type}`); return; }
     if (Object.hasOwn(node, 'const') && item !== node.const) fail(where, 'const mismatch');
     if (node.enum && !node.enum.includes(item)) fail(where, 'enum mismatch');
-    if (node.pattern && typeof item === 'string' && !/^Ciras-Inc\/[A-Za-z0-9_.-]+$/.test(item)) fail(where, 'pattern mismatch');
+    if (node.pattern && typeof item === 'string' && !validRepositoryIdentifier(item)) fail(where, 'pattern mismatch');
     if (record(item)) {
       const keys = Object.keys(item);
       if (node.minProperties !== undefined && keys.length < node.minProperties) fail(where, 'too few properties');
@@ -201,7 +205,7 @@ function releaseMatches(text, manifest) {
 const nonempty = value => typeof value === 'string' && value.trim().length > 0;
 const strings = value => Array.isArray(value) && value.every(nonempty);
 export function validRepositoryProfile(profile) {
-  if (!record(profile)) return false;
+  if (!record(profile) || !validRepositoryIdentifier(profile.repository) || profile.profile_id !== profile.repository) return false;
   const fields = ['schema_version', 'policy_id', 'repository', 'profile_id', 'base_commit', 'default_branch',
     'classification', 'native_runtime_verified', 'protected_branch_conditions', 'required_checks',
     'local_check_commands', 'existing_native_settings', 'runtime_test_status', 'legacy_branch_protection_status'];
@@ -304,17 +308,15 @@ export function verify(root, { expectedManifestSha256, expectedRepository } = {}
   add('manifest-policy', manifest.policy_id === POLICY_ID, 'Manifest policy_id must match adopted R2.1.');
   add('manifest-source', manifest.source_repository === 'Ciras-Inc/ciras-os' && COMMIT.test(manifest.source_commit ?? ''),
     'Source repository and 40-hex commit format checked; existence and approval are not inferred.');
-  add('manifest-generator', manifest.generator_version === '1.0.3', 'Generator version must be 1.0.3.');
+  add('manifest-generator', manifest.generator_version === '1.0.4', 'Generator version must be 1.0.4.');
   if (expectedRepository !== undefined) {
-    add('expected-repository', typeof expectedRepository === 'string' && /^Ciras-Inc\/[A-Za-z0-9_.-]+$/.test(expectedRepository) &&
-      !['.', '..'].includes(expectedRepository.split('/')[1]) && manifest.profile_id === expectedRepository,
+    add('expected-repository', validRepositoryIdentifier(expectedRepository) && manifest.profile_id === expectedRepository,
       'Manifest target matches separately supplied expected repository.');
   } else {
     add('repository-unbound', true, 'No external target supplied; repository identity is self-declared local consistency only.');
   }
-  add('manifest-profile', typeof manifest.profile_id === 'string' && REPO.test(manifest.profile_id) &&
-    manifest.profile_id.startsWith('Ciras-Inc/') && !['.', '..'].includes(manifest.profile_id.split('/')[1]),
-    'Profile must identify the target Ciras-Inc repository.');
+  add('manifest-profile', validRepositoryIdentifier(manifest.profile_id),
+    'Profile must identify a syntactically valid target owner/repository; source trust remains separate.');
   add('manifest-base', manifest.base_commit === null || COMMIT.test(manifest.base_commit ?? ''), 'Base commit must be 40-hex or null.');
   add('manifest-runtime', manifest.native_runtime_verified === false, 'Static artifacts must not claim native runtime verification.');
   if (!add('manifest-files', record(manifest.files) && Object.keys(manifest.files).length > 0 && Object.keys(manifest.files).length <= 1024,
@@ -377,6 +379,16 @@ export function verify(root, { expectedManifestSha256, expectedRepository } = {}
       'Policy satisfies the bundled bounded schema vocabulary; not a general Draft 2020-12 evaluator.');
     add('policy-id', policy.policy_id === POLICY_ID, 'Policy ID matches manifest.');
     add('policy-history', !hasArchiveKey(policy), 'Policy does not embed audit_archive history.');
+    // Retain mandatory R2.1 success/allow entries even if a local schema is coherently weakened.
+    // This checks completeness, not the meaning or approval of arbitrary replacement prose.
+    for (const [field, prefix, detail, checkId] of [['成功条件', 'SC', 'evidence', 'policy-success-set'], ['許可範囲', 'AL', 'boundary', 'policy-allow-set']]) {
+      const entries = policy[field];
+      const expected = [1, 2, 3, 4].map(number => prefix + number);
+      const ids = Array.isArray(entries) ? entries.map(entry => entry?.id) : [];
+      add(checkId, Array.isArray(entries) && ids.length === expected.length && new Set(ids).size === ids.length &&
+        entries.every(entry => record(entry) && expected.includes(entry.id) && nonempty(entry.text) && nonempty(entry[detail])),
+        `Policy must retain the four adopted unique ${prefix} IDs with nonempty text and ${detail}.`);
+    }
     const supplements = policy.repository_specific_requirements;
     add('policy-repository', record(supplements) && Object.keys(supplements).length === 1 && Object.hasOwn(supplements, manifest.profile_id),
       'Policy has exactly one supplement for its target repository.');
