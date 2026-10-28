@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "policy_id": "CIRAS-SUCCESS-20261028-R2.1",
+  "source_repository": "Ciras-Inc/ciras-os",
+  "source_commit": "500db22a50d493566cde9c1617355cec5156134b",
+  "generator_version": "1.0.4",
+  "profile_id": "Ciras-Inc/line-harness-oss",
+  "base_commit": "74e11182528e0a2d0ab9896a4ef1337d5a924b31",
+  "files": {
+    ".ciras/ai-profile.json": "0c001905192271dadaab8fd8c8fd1a249577da408507949d36e31aaea455cfaa",
+    ".ciras/governance-release.yaml": "683b190de1c2ee657d17723cb051ee207612c82ebe2b454094492d94f90cbea9",
+    ".ciras/policy.schema.json": "53ff996c707dc393c350f1fbb834112da9e04a1196979de0bc68306e84b785ac",
+    ".ciras/repository-context.md": "ba6fc6d907641f65eea2d5f485c3c0bf8d686502780762078fcfb1663d5073e5",
+    ".ciras/verify-ai-settings.mjs": "b6147707b2ccc1f631e4de07c21399b9388dcc117eab1bb1bd56f31c4e96643e",
+    ".cursor/rules/ciras-repository.mdc": "36e2c96c6956f4ebf831840b10e80398032d8a9e46c19aa4f1428261e4a797ee",
+    "00_CIRAS_POLICY.json": "bcfcafca2926f40266fd5c557fc86b8bd02429f35990020e75553e0d2b09fc49",
+    "AGENTS.md": "7686b433ca54be54d11254f90ef9e53bb1b2547562fe42ed97ef8e5a0efc30d0",
+    "CLAUDE.md": "9d5ef38835575d8763c7937afed1f91b9c11cad4068c01305450b56fd5ec34d7",
+    "docs/AI_SETTINGS.md": "55bb530aa394cc78fbe6301961439512000f09817e49ce85ae8524b3f47c7b32",
+    "README.md": "6abfd4c6ae70f6da75de7a90f8cc2bfbd28b9207ec8c96fe7213a3b10c231bdd"
+  },
+  "native_runtime_verified": false
+}

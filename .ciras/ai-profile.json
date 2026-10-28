@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "policy_id": "CIRAS-SUCCESS-20261028-R2.1",
+  "repository": "Ciras-Inc/line-harness-oss",
+  "profile_id": "Ciras-Inc/line-harness-oss",
+  "base_commit": "74e11182528e0a2d0ab9896a4ef1337d5a924b31",
+  "default_branch": "main",
+  "classification": "active",
+  "native_runtime_verified": false,
+  "protected_branch_conditions": [],
+  "required_checks": [],
+  "local_check_commands": [],
+  "existing_native_settings": [
+    ".claude/settings.json"
+  ],
+  "runtime_test_status": "not-run: product executables unavailable in preparation environment",
+  "legacy_branch_protection_status": "unverified_403_on_three_representatives"
+}

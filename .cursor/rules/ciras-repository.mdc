@@ -1,0 +1,10 @@
+---
+description: Ciras repository instructions and execution-surface guidance
+alwaysApply: true
+---
+
+# Cursor 固有の入口
+
+共通の作業指示はリポジトリの `AGENTS.md`、規則の詳細は同版の `00_CIRAS_POLICY.json` を参照する。対象ファイルに適用される子ディレクトリの指示も確認する。
+Cursor の参照記法はファイル全文の自動展開を保証しない。作業に必要な規則を読み、Desktop・CLI・Cloudごとの読込・trust・権限を区別する。
+既存の製品権限・hook・隔離を変更または迂回しない。指示文の読込と実際の拒否動作は別に検証する。
