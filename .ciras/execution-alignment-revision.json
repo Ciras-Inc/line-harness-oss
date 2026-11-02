@@ -1,0 +1,100 @@
+{
+  "revision": "R2.2-local4-execution-alignment-20261101",
+  "repository": "Ciras-Inc/line-harness-oss",
+  "parent_candidate_commit": null,
+  "parent_candidate_local_path": "ciras_ai_settings_r22_20261029/package/repositories/line-harness-oss",
+  "parent_candidate_local_manifest_sha256": "984adb5c80fd025285d8d63b05edc678e03fe8f5bed3ce1973e070558e9485ab",
+  "parent_candidate_local_files_sha256": "87c91586f018ca9256186460547c485b133f84f5f4c400002dbf29feaabe028f",
+  "observed_pr_head": "aaee3dd4cbcd8b1f122c54cd223cc1744c17b784",
+  "observed_pr_base": "74e11182528e0a2d0ab9896a4ef1337d5a924b31",
+  "observed_pr_source": "2026-11-01 GitHub get_pr_info; current managed files matched fetched head manifest",
+  "base_source_bundle_sha256": "cbef01c9d990041059f0aedad05c7b834058a436508e8483ba4cf2eadf58ac6d",
+  "base_generator_version": "1.1.0",
+  "shared_current_source_path": "r22_claude_fix_review_20261101/candidates/ciras-numerology",
+  "shared_current_manifest_sha256": "ab7df9ad51cdf66fe22eb5522c500e411591cf0ce99087ebfe1b25ce6a68b15b",
+  "revision_method": "explicit-post-generation-local-patch",
+  "execution_environment": "Codex",
+  "scope": "隔離候補のみ。通常操作AI条件と初期設定/有効保護/固有本人専用条件を分離。現行固有原文とbase Review guidelinesを保持。",
+  "source_commit": null,
+  "owner_approved": false,
+  "applied": false,
+  "native_runtime_verified": false,
+  "files": {
+    ".ciras/native-control-map.json": {
+      "before_sha256": "012c02a271a47b5e709ed134b256cd07a5419a0ab5d16ee216ccd2ea328e6ce7",
+      "after_sha256": "c3ffd147ea0259522b706e0b85d5df0c86a1c905668206bc2b216fe931c58c12",
+      "before_source": "parent_candidate_local_bundle"
+    },
+    ".ciras/policy.schema.json": {
+      "before_sha256": "9844e06bacf6bd5862ac3aaca5b2fc9e5bf11860a6cbdce6254a8eb3a29de64a",
+      "after_sha256": "8e243ad76b172d7a0b784be85fdf3dd0de4c5f040bdfb82aa99f4c7c296f49ee",
+      "before_source": "parent_candidate_local_bundle"
+    },
+    ".ciras/repository-context.md": {
+      "before_sha256": "65641021ad0334691d8f45c0908647d61fc1e4e3dc040ef58c04bfd0e5ad4359",
+      "after_sha256": "c94466ca392cb89271818d7eae0f11d26d14d2b865d62d9dac7ef23b43a5b1f0",
+      "before_source": "parent_candidate_local_bundle"
+    },
+    ".ciras/tests/verify-ai-settings.test.mjs": {
+      "before_sha256": null,
+      "after_sha256": "33a1f5b0e44134e127f281663c3210a54ace97e0e1c1beca355c8583d5a5840a",
+      "before_source": "new_file"
+    },
+    ".ciras/verify-ai-settings.mjs": {
+      "before_sha256": "8bbb9b6fefa8562131f8a62559af57c74a4aa9d906c0c1547658da707bbdbc54",
+      "after_sha256": "f7eb588dbdf5dba9591bdcab69f675480d3e4c5e33a1a0ecc07084f71c76ab4b",
+      "before_source": "parent_candidate_local_bundle"
+    },
+    ".cursor/rules/ciras-repository.mdc": {
+      "before_sha256": "be91f801be92291f6d1de0cc35650a66c71874647312b65b69cc489cd0b60d54",
+      "after_sha256": "e88ac6f3d4a1429b725456d75bd224f4f02eda8859c21fb3a0119379d90a4988",
+      "before_source": "parent_candidate_local_bundle"
+    },
+    "00_CIRAS_POLICY.json": {
+      "before_sha256": "1d242f108c00ff058b59a434feefc369b9d6f3c8f046c6bbe98865daccd9863f",
+      "after_sha256": "99ce2ac6bafbc1166c37fa8354bbd164ca5d7b99f7750ee4f3f5b07fb3d2cc7d",
+      "before_source": "parent_candidate_local_bundle"
+    },
+    "AGENTS.md": {
+      "before_sha256": "82d8b3a82ade889c493489f9bf46a75a4d7c49d9266c6bc753f68a746bf27294",
+      "after_sha256": "3e3d5f62e99fd50454e241d1ec90542b4af88a7f85859d0108317d69e1ceba20",
+      "before_source": "parent_candidate_local_bundle"
+    },
+    "CLAUDE.md": {
+      "before_sha256": "8631f9b990b523d1792cadc707cbb6cae79cda3c3035790cc06713bd6a11edca",
+      "after_sha256": "a3d6def70e916c408d125216db433549eac44ab764c1d229abb21805321967ee",
+      "before_source": "parent_candidate_local_bundle"
+    },
+    "README.md": {
+      "before_sha256": "8a2f74b2582026694b14cabc81a2d5928e3bbb2e9b9c4af1659bdfb23f0dfb20",
+      "after_sha256": "f86a60b4f9f85a716c15ddbf9ed5274e4d2e91f110f8cf2d7b71093df24b59bb",
+      "before_source": "parent_candidate_local_bundle"
+    },
+    "docs/AI_OPERATION.md": {
+      "before_sha256": "861f4a637beab6f7b4d5b30f2301d1c9ee059103444d5abd32cb174330378318",
+      "after_sha256": "23824f548e74a73e9cace31790f760c0dfea5bf76e347eb206aecbc3c7327340",
+      "before_source": "parent_candidate_local_bundle"
+    },
+    "docs/AI_RUNTIME_ACCEPTANCE.md": {
+      "before_sha256": "0dcaef4d67e025601fed974326321fd9250bd7766e6ec7093c0eb924f472c7a6",
+      "after_sha256": "90a31266536f5b692fd51f8c234204d57bffeabbf41486f4ef8b5c0492d77678",
+      "before_source": "parent_candidate_local_bundle"
+    },
+    "docs/AI_SETTINGS.md": {
+      "before_sha256": "44e570cd0ec9faa1bb532702ae2f03775f567c8a5d23e15b3c63423530a161e4",
+      "after_sha256": "1127b6b11143ab5c818b76c8feef59957a8d3aa6cd656cb44a0f9ef30cf5b5ef",
+      "before_source": "parent_candidate_local_bundle"
+    },
+    "docs/OWNER_HANDOFF.md": {
+      "before_sha256": "4ecd9c3e0580b5ea7fd2725e540e65e03d52a15c87ab6c049be3a0550e0a8ca4",
+      "after_sha256": "092ae6bde4ce094cd18bcf254bd640a95058dc33a899973218327f6421fcd3ab",
+      "before_source": "parent_candidate_local_bundle"
+    },
+    "docs/OWNER_LOCAL4_HANDOFF.md": {
+      "before_sha256": null,
+      "after_sha256": "70bcfa1f702e9acce835aeae1c2ec71c74ea554301ee2b0c3450aca84ccdb6d5",
+      "before_source": "new_file"
+    }
+  },
+  "integrity": "beforeは上記固定local R2.2候補から算出。GitHub headとは別版。receipt自体はmanifestに含む。hashは承認や実権限ではない。"
+}

@@ -7,9 +7,10 @@ import { fileURLToPath } from 'node:url';
 import process from 'node:process';
 import { TextDecoder } from 'node:util';
 
-export const POLICY_ID = 'CIRAS-SUCCESS-20261028-R2.1';
+export const POLICY_ID = 'CIRAS-SUCCESS-20261029-R2.2';
 export const MANIFEST_PATH = '.ciras/ai-settings-manifest.json';
-export const REQUIRED_FILES = Object.freeze([
+export const SHARED_FILES=Object.freeze(['docs/OWNER_HANDOFF.md', 'docs/OWNER_HANDOFF.template.json', 'docs/AI_OPERATION.md', 'docs/AI_RUNTIME_ACCEPTANCE.md', 'docs/SOFTWARE_ADOPTION.md', '.ciras/native-control-map.json']);
+export const REQUIRED_FILES = Object.freeze([...SHARED_FILES,
   'AGENTS.md', 'CLAUDE.md', '.cursor/rules/ciras-repository.mdc',
   '00_CIRAS_POLICY.json', '.ciras/repository-context.md',
   '.ciras/ai-profile.json', '.ciras/verify-ai-settings.mjs', 'docs/AI_SETTINGS.md',
@@ -22,8 +23,8 @@ const RULE_DECISIONS = Object.freeze({
   S01: 'stop_and_return', C01: 'stop_unauthorized_import',
   'A01-SELF': 'stop_and_return', R01: 'stop_and_return',
   G01: 'stop_and_return', G02: 'stop_and_return', G03: 'approval_required',
-  D01: 'approval_required', P01: 'approval_required', N01: 'approval_required',
-  B01: 'stop_and_return', 'B02-CONTRACT': 'approval_required', 'A01-CHANGE': 'approval_required',
+  D01: 'owner_execution_only', P01: 'approval_required', N01: 'authorized_specific_request',
+  B01: 'stop_and_return', 'B02-CONTRACT': 'owner_execution_only', 'A01-CHANGE': 'owner_execution_only', SW01: 'stop_and_return',
 });
 const HASH = /^[0-9a-f]{64}$/;
 const COMMIT = /^[0-9a-f]{40}$/;
@@ -50,8 +51,11 @@ export function forbiddenPath(relative) {
   if (/credentials-ledger|^key-rotation\.jsonl$/i.test(base)) return true;
   if (/^(05_PROFILE|06_PROFILE)|PROFILE_(SUGIMOTO|KATAOKA)/i.test(base)) return true;
   if (parts.some((p) => /^(audit_archive|91_旧履歴_実行対象外|98_R1履歴)$/i.test(p))) return true;
-  if (/(?:^|\/)(?:\.mcp\.json|\.claude\.json|\.codex\/auth\.json|\.cursor\/mcp\.json)$/.test(relative)) return true;
-  if (/(?:^|\/)\.claude\/settings(?:\.local)?\.json$/.test(relative)) return true;
+  // Known active native/credential settings are not distributable by this static bundle.
+  // Match case-insensitively so a case-sensitive staging host cannot create a Windows alias.
+  if (/(?:^|\/)(?:\.mcp\.json|\.claude\.json|\.codex\/auth\.json|\.cursor\/mcp\.json)$/i.test(relative)) return true;
+  if (/(?:^|\/)\.claude\/settings(?:\.local)?\.json$/i.test(relative)) return true;
+  if (/(?:^|\/)(?:\.codex\/(?:(?:config|requirements)\.toml|hooks\.json)|\.cursor\/(?:cli|permissions|hooks|environment|worktrees)\.json)$/i.test(relative)) return true;
   return false;
 }
 
@@ -118,8 +122,8 @@ export function validateBundledPolicy(schema, value) {
       if (!keywords.has(key)) { fail(where, `unsupported schema keyword ${key}`); continue; }
       if (['$schema', '$id', 'title'].includes(key) && typeof child !== 'string') fail(where, `${key} must be string`);
       if (key === '$schema' && child !== 'https://json-schema.org/draft/2020-12/schema') fail(where, 'unsupported schema dialect');
-      if (key === 'type' && !['object', 'array', 'string', 'integer'].includes(child)) fail(where, 'unsupported schema type');
-      if (key === 'const' && typeof child !== 'string') fail(where, 'only string const is supported');
+      if (key === 'type' && !['object', 'array', 'string', 'integer', 'boolean'].includes(child)) fail(where, 'unsupported schema type');
+      if (key === 'const' && !(child === null || ['string', 'boolean'].includes(typeof child))) fail(where, 'only string, boolean or null const is supported');
       if (key === 'enum' && (!Array.isArray(child) || !child.length || !child.every(x => typeof x === 'string'))) fail(where, 'only nonempty string enum is supported');
       if (key === 'required' && (!Array.isArray(child) || !child.every(x => typeof x === 'string') || new Set(child).size !== child.length)) fail(where, 'invalid required');
       if (['minItems', 'maxItems', 'minProperties', 'maxProperties'].includes(key) && (!Number.isSafeInteger(child) || child < 0)) fail(where, `invalid ${key}`);
@@ -137,7 +141,7 @@ export function validateBundledPolicy(schema, value) {
   let visits = 0;
   function check(node, item, where = '$policy', depth = 0) {
     if (++visits > 100000 || depth > 64) { fail(where, 'policy evaluation bound exceeded'); return; }
-    const matches = { object: record(item), array: Array.isArray(item), string: typeof item === 'string', integer: Number.isInteger(item) };
+    const matches = { object: record(item), array: Array.isArray(item), string: typeof item === 'string', integer: Number.isInteger(item), boolean: typeof item === 'boolean' };
     if (node.type && !matches[node.type]) { fail(where, `expected ${node.type}`); return; }
     if (Object.hasOwn(node, 'const') && item !== node.const) fail(where, 'const mismatch');
     if (node.enum && !node.enum.includes(item)) fail(where, 'enum mismatch');
@@ -187,17 +191,19 @@ function releaseMatches(text, manifest) {
   if (sections.length !== 1 || lines[sections[0]] !== 'ai_repository_settings:') return false;
   const expected = {
     policy_id: manifest.policy_id, source_repository: manifest.source_repository,
-    source_commit: manifest.source_commit, source_path: 'control-plane/core/00_CIRAS_POLICY.json',
+    source_commit: null, baseline_source_commit: manifest.baseline_source_commit,
+    source_bundle_sha256: manifest.source_bundle_sha256, source_mode: 'candidate_bundle',
+    artifact_status: 'content-complete-not-deployed', source_path: 'control-plane/core/00_CIRAS_POLICY.json',
     generator_version: manifest.generator_version, profile_id: manifest.profile_id,
-    manifest: MANIFEST_PATH, adoption_status: 'basis-adopted',
-    final_reflection: 'track-by-PR-and-head-sha', native_runtime_verified: false,
+    manifest: MANIFEST_PATH, adoption_status: 'not-deployed',
+    final_reflection: 'owner-execution-pending', owner_final_approval: false, applied: false, native_runtime_verified: false,
   };
   const parsed = Object.create(null);
   for (const line of lines.slice(sections[0] + 1)) {
     if (!line.trim()) continue;
-    const field = line.match(/^[ ]{2}([a-z_]+): (?:'([^'\r\n]*)'|(false))$/);
+    const field = line.match(/^[ ]{2}([a-z][a-z0-9_]*): (?:'([^'\r\n]*)'|(false|null))$/);
     if (!field || !Object.hasOwn(expected, field[1]) || Object.hasOwn(parsed, field[1])) return false;
-    parsed[field[1]] = field[3] ? false : field[2];
+    parsed[field[1]] = field[3] === 'false' ? false : field[3] === 'null' ? null : field[2];
   }
   return Object.keys(expected).every(key => Object.hasOwn(parsed, key) && parsed[key] === expected[key]);
 }
@@ -233,7 +239,7 @@ export function validRepositoryProfile(profile) {
  * Requires an immutable isolated checkout; concurrent filesystem writers are outside this static tool.
  * A syntactically valid source_commit is not evidence that the commit exists or is approved.
  */
-export function verify(root, { expectedManifestSha256, expectedRepository } = {}) {
+export function verify(root, { expectedManifestSha256, expectedRepository, expectedSourceBundleSha256 } = {}) {
   const checks = [];
   const errors = [];
   const add = (id, ok, message) => {
@@ -304,11 +310,27 @@ export function verify(root, { expectedManifestSha256, expectedRepository } = {}
   }
   const manifest = parse(manifestBytes, MANIFEST_PATH);
   if (!manifest) return done();
-  add('manifest-version', manifest.schema_version === 1, 'Manifest schema_version must be 1.');
-  add('manifest-policy', manifest.policy_id === POLICY_ID, 'Manifest policy_id must match adopted R2.1.');
-  add('manifest-source', manifest.source_repository === 'Ciras-Inc/ciras-os' && COMMIT.test(manifest.source_commit ?? ''),
-    'Source repository and 40-hex commit format checked; existence and approval are not inferred.');
-  add('manifest-generator', manifest.generator_version === '1.0.4', 'Generator version must be 1.0.4.');
+  add('manifest-version', manifest.schema_version === 2, 'Manifest schema_version must be 2.');
+  add('manifest-policy', manifest.policy_id === POLICY_ID, 'Manifest policy_id must match the R2.2 content edition.');
+  const manifestFields = ['schema_version', 'policy_id', 'source_repository', 'source_commit', 'baseline_source_commit',
+    'source_bundle_sha256', 'source_mode', 'artifact_status', 'owner_final_approval', 'applied', 'generator_version',
+    'profile_id', 'base_commit', 'files', 'native_runtime_verified'];
+  add('manifest-fields', Object.keys(manifest).length === manifestFields.length && manifestFields.every(key => Object.hasOwn(manifest, key)),
+    'Candidate manifest has exactly its fixed provenance and non-activation fields.');
+  add('manifest-source', manifest.source_repository === 'Ciras-Inc/ciras-os' && manifest.source_commit === null &&
+    typeof manifest.baseline_source_commit === 'string' && COMMIT.test(manifest.baseline_source_commit) &&
+    typeof manifest.source_bundle_sha256 === 'string' && HASH.test(manifest.source_bundle_sha256) &&
+    manifest.source_mode === 'candidate_bundle',
+    'New source is an unpublished candidate bundle; baseline commit existence and approval are not inferred.');
+  add('manifest-not-deployed', manifest.artifact_status === 'content-complete-not-deployed' && manifest.applied === false &&
+    manifest.owner_final_approval === false, 'Candidate cannot claim deployment or owner final approval.');
+  if (expectedSourceBundleSha256 !== undefined) {
+    add('expected-source-bundle', typeof expectedSourceBundleSha256 === 'string' && HASH.test(expectedSourceBundleSha256) &&
+      manifest.source_bundle_sha256 === expectedSourceBundleSha256, 'Source bundle digest matches a separately fixed value.');
+  } else {
+    add('source-bundle-unanchored', true, 'Source bundle digest is declared here; verify the separate source inventory and trust it independently.');
+  }
+  add('manifest-generator', manifest.generator_version === '1.1.0', 'Generator version must be 1.1.0.');
   if (expectedRepository !== undefined) {
     add('expected-repository', validRepositoryIdentifier(expectedRepository) && manifest.profile_id === expectedRepository,
       'Manifest target matches separately supplied expected repository.');
@@ -377,7 +399,7 @@ export function verify(root, { expectedManifestSha256, expectedRepository } = {}
     const schemaErrors = schema ? validateBundledPolicy(schema, policy) : ['Missing valid schema'];
     add('policy-schema', schemaErrors.length === 0, schemaErrors.length ? schemaErrors.join('; ') :
       'Policy satisfies the bundled bounded schema vocabulary; not a general Draft 2020-12 evaluator.');
-    add('policy-id', policy.policy_id === POLICY_ID, 'Policy ID matches manifest.');
+    add('policy-id', policy.policy_id === POLICY_ID && policy.schema_version === 2 && policy.status === 'content-complete-not-deployed', 'Policy ID, schema and content-only status match this candidate edition.');
     add('policy-history', !hasArchiveKey(policy), 'Policy does not embed audit_archive history.');
     // Retain mandatory R2.1 success/allow entries even if a local schema is coherently weakened.
     // This checks completeness, not the meaning or approval of arbitrary replacement prose.
@@ -389,17 +411,71 @@ export function verify(root, { expectedManifestSha256, expectedRepository } = {}
         entries.every(entry => record(entry) && expected.includes(entry.id) && nonempty(entry.text) && nonempty(entry[detail])),
         `Policy must retain the four adopted unique ${prefix} IDs with nonempty text and ${detail}.`);
     }
+    const execution = policy.execution_contract;
+    const productionActions = ['merge', 'publish', 'deploy', 'external-send', 'release', 'live-data-write', 'permission-change', 'sharing-change', 'new-connection', 'automation-enable', 'contract-accept'];
+    const preparationActions = ['read-nonsecret', 'edit-candidate', 'local-test', 'prepare-diff', 'prepare-handoff', 'authorized-nonpublic-pr'];
+    const checkpoints = ['start', 'material_change', 'before_review', 'before_handoff'];
+    const exactSet = (actual, expected) => strings(actual) && actual.length === expected.length && new Set(actual).size === actual.length && expected.every(x => actual.includes(x));
+    // This verifies a candidate contract, not live authorization or permission enforcement.
+    // Owner-only adoption is retained while ordinary effects require every adopted condition.
+    const ownerOnlyActions = ['initial-settings-adoption', 'active-protection-change', 'repository-owner-only-action', 'contract-accept'];
+    const executionConditions = ['same-fixed-version', 'required-verification-passed', 'formal-review-satisfied',
+      'valid-operation-approval', 'actual-authority', 'adopted-route', 'approved-side-effects', 'no-stop-or-unknown-outcome'];
+    const executionFields = ['execution_mode', 'ordinary_action_actor', 'owner_only_actor', 'approval_alone_is_sufficient',
+      'owner_only_actions', 'ordinary_execution_conditions', 'production_actions', 'ai_preparation_actions',
+      'permitted_after_owner_action', 'preparation_with_production_side_effects', 'birds_eye_required',
+      'objective_checkpoints', 'identity_boundary', 'existing_automation_boundary', 'formal_review_boundary'];
+    add('policy-execution-boundary', record(execution) && exactSet(Object.keys(execution), executionFields) &&
+      execution.execution_mode === 'authorized_ordinary_actions_owner_only_adoption' &&
+      execution.ordinary_action_actor === 'authorized_ai_or_owner' && execution.owner_only_actor === 'sugimoto' &&
+      execution.approval_alone_is_sufficient === false &&
+      execution.preparation_with_production_side_effects === 'effect-specific-authorization' &&
+      exactSet(execution.owner_only_actions, ownerOnlyActions) && exactSet(execution.ordinary_execution_conditions, executionConditions) &&
+      exactSet(execution.production_actions, productionActions) && exactSet(execution.ai_preparation_actions, preparationActions) &&
+      exactSet(execution.permitted_after_owner_action, ['nonsecret-readback', 'compare-result', 'report']) && nonempty(execution.identity_boundary) &&
+      nonempty(execution.existing_automation_boundary) && nonempty(execution.formal_review_boundary),
+      'Ordinary execution requires fixed-version verification, review, authorization, actual authority, adopted route and approved effects; owner-only adoption and stop boundaries remain.');
+    add('policy-birds-eye', record(execution) && execution.birds_eye_required === true && exactSet(execution.objective_checkpoints, checkpoints),
+      'Birds-eye purpose and scope checks remain mandatory at the four material checkpoints.');
+    const handoff = policy.owner_handoff_contract;
+    const handoffFields = ['purpose', 'before', 'after', 'changed_and_unchanged', 'version', 'target_and_audience', 'verification', 'review', 'side_effects', 'costs', 'restoration', 'owner_steps', 'open_items', 'readiness'];
+    add('policy-owner-handoff', record(handoff) && exactSet(handoff.required_fields, handoffFields) &&
+      exactSet(handoff.readiness_values, ['ready_for_owner_action', 'hold_for_specific_dependency', 'not_applicable']) &&
+      handoff.decision_actor === 'sugimoto' && handoff.ai_self_score_is_evidence === false && nonempty(handoff.minimum_rule),
+      'Owner receives a complete before/after decision record; AI scores do not replace evidence or owner judgement.');
     const supplements = policy.repository_specific_requirements;
     add('policy-repository', record(supplements) && Object.keys(supplements).length === 1 && Object.hasOwn(supplements, manifest.profile_id),
       'Policy has exactly one supplement for its target repository.');
     const rules = policy['禁止の正本（JSON参照）']?.rules;
     const ids = Array.isArray(rules) ? rules.map((rule) => rule?.id) : [];
     add('policy-rule-set', ids.length === Object.keys(RULE_DECISIONS).length && new Set(ids).size === ids.length &&
-      ids.every((id) => Object.hasOwn(RULE_DECISIONS, id)), 'Policy has exactly the 13 adopted unique rule IDs.');
+      ids.every((id) => Object.hasOwn(RULE_DECISIONS, id)), 'Policy has exactly the 14 R2.2 unique rule IDs.');
     if (Array.isArray(rules)) {
       for (const rule of rules) add('policy-decision', record(rule) && Object.hasOwn(RULE_DECISIONS, rule.id) &&
-        rule.decision === RULE_DECISIONS[rule.id], `Rule decision must match adopted baseline: ${rule?.id ?? 'missing'}`);
+        rule.decision === RULE_DECISIONS[rule.id] && nonempty(rule.scope) && nonempty(rule.approved_behavior) && nonempty(rule.group), `Rule decision and required prose must match the R2.2 contract: ${rule?.id ?? 'missing'}`);
     }
+  }
+  const nativeMap = parse(contents.get('.ciras/native-control-map.json'), '.ciras/native-control-map.json');
+  if (nativeMap) {
+    const expectedProducts = ['Claude Code', 'Cursor', 'Codex'];
+    add('native-map-not-active', nativeMap.policy_id === POLICY_ID && nativeMap.native_runtime_verified === false &&
+      nativeMap.ai_production_execution === false && nativeMap.preserve_existing_native_settings === true &&
+      nativeMap.activation_actor === 'sugimoto' && nativeMap.automatic_activation === false &&
+      Array.isArray(nativeMap.surfaces) && nativeMap.surfaces.length === 3 &&
+      new Set(nativeMap.surfaces.map(x=>x?.product)).size === 3 && nativeMap.surfaces.every(x=>record(x) &&
+        expectedProducts.includes(x.product) && x.status === 'not_verified' && nonempty(x.instruction_entry) && x.policy_details === '00_CIRAS_POLICY.json') &&
+      nativeMap.acceptance_document === 'docs/AI_RUNTIME_ACCEPTANCE.md',
+      'Product control map describes unverified preserved native surfaces; it cannot activate production or assert runtime success.');
+  }
+  const handoffTemplate = parse(contents.get('docs/OWNER_HANDOFF.template.json'), 'docs/OWNER_HANDOFF.template.json');
+  if (handoffTemplate) {
+    const required = policy?.owner_handoff_contract?.required_fields;
+    add('handoff-template-not-executed', Array.isArray(required) && required.every(key=>Object.hasOwn(handoffTemplate,key)) &&
+      handoffTemplate.template_only === true && handoffTemplate.execution_actor === 'sugimoto' &&
+      handoffTemplate.owner_approval_recorded === false && handoffTemplate.production_executed === false &&
+      handoffTemplate.readiness === 'hold_for_specific_dependency' && handoffTemplate.verification?.status === 'not_run' &&
+      handoffTemplate.review?.status === 'not_performed',
+      'Blank handoff template is held; it must not claim completed checks, owner approval or production execution.');
   }
   const profile = parse(contents.get('.ciras/ai-profile.json'), '.ciras/ai-profile.json');
   if (profile) {
@@ -422,17 +498,19 @@ function main(argv) {
   let root;
   let expectedManifestSha256;
   let expectedRepository;
+  let expectedSourceBundleSha256;
   for (let index = 0; index < argv.length; index++) {
     const option = argv[index];
-    if ((option === '--root' || option === '--expected-manifest-sha256' || option === '--expected-repository') && index + 1 < argv.length) {
+    if ((option === '--root' || option === '--expected-manifest-sha256' || option === '--expected-repository' || option === '--expected-source-bundle-sha256') && index + 1 < argv.length) {
       if (option === '--root' && root === undefined) root = argv[++index];
       else if (option === '--expected-manifest-sha256' && expectedManifestSha256 === undefined) expectedManifestSha256 = argv[++index];
       else if (option === '--expected-repository' && expectedRepository === undefined) expectedRepository = argv[++index];
+      else if (option === '--expected-source-bundle-sha256' && expectedSourceBundleSha256 === undefined) expectedSourceBundleSha256 = argv[++index];
       else throw new Error('Duplicate argument.');
-    } else throw new Error('Usage: node verify.mjs --root <repo> [--expected-manifest-sha256 <trustedhash>] [--expected-repository <owner/repo>]');
+    } else throw new Error('Usage: node verify.mjs --root <repo> [--expected-manifest-sha256 <trustedhash>] [--expected-repository <owner/repo>] [--expected-source-bundle-sha256 <trustedhash>]');
   }
   if (!root) throw new Error('Missing --root.');
-  const result = verify(root, { expectedManifestSha256, expectedRepository });
+  const result = verify(root, { expectedManifestSha256, expectedRepository, expectedSourceBundleSha256 });
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
   process.exitCode = result.ok ? 0 : 1;
 }

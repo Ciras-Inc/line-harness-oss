@@ -22,17 +22,20 @@
     "work_contract",
     "quality_details",
     "repository_distribution",
-    "repository_specific_requirements"
+    "repository_specific_requirements",
+    "execution_contract",
+    "owner_handoff_contract"
   ],
   "properties": {
     "policy_id": {
-      "const": "CIRAS-SUCCESS-20261028-R2.1"
+      "const": "CIRAS-SUCCESS-20261029-R2.2"
     },
     "schema_version": {
       "type": "integer"
     },
     "status": {
-      "type": "string"
+      "type": "string",
+      "const": "content-complete-not-deployed"
     },
     "date_jst": {
       "type": "string"
@@ -187,8 +190,8 @@
         },
         "rules": {
           "type": "array",
-          "minItems": 13,
-          "maxItems": 13,
+          "minItems": 14,
+          "maxItems": 14,
           "items": {
             "type": "object",
             "required": [
@@ -213,7 +216,8 @@
                   "N01",
                   "B01",
                   "B02-CONTRACT",
-                  "A01-CHANGE"
+                  "A01-CHANGE",
+                  "SW01"
                 ]
               },
               "group": {
@@ -223,7 +227,9 @@
                 "enum": [
                   "stop_and_return",
                   "stop_unauthorized_import",
-                  "approval_required"
+                  "approval_required",
+                  "owner_execution_only",
+                  "authorized_specific_request"
                 ]
               },
               "scope": {
@@ -737,6 +743,219 @@
       "additionalProperties": {
         "type": "object"
       }
+    },
+    "execution_contract": {
+      "type": "object",
+      "required": [
+        "execution_mode",
+        "ordinary_action_actor",
+        "owner_only_actor",
+        "approval_alone_is_sufficient",
+        "owner_only_actions",
+        "ordinary_execution_conditions",
+        "production_actions",
+        "ai_preparation_actions",
+        "permitted_after_owner_action",
+        "preparation_with_production_side_effects",
+        "birds_eye_required",
+        "objective_checkpoints",
+        "identity_boundary",
+        "existing_automation_boundary",
+        "formal_review_boundary"
+      ],
+      "properties": {
+        "execution_mode": {
+          "type": "string",
+          "const": "authorized_ordinary_actions_owner_only_adoption"
+        },
+        "ordinary_action_actor": {
+          "type": "string",
+          "const": "authorized_ai_or_owner"
+        },
+        "owner_only_actor": {
+          "type": "string",
+          "const": "sugimoto"
+        },
+        "approval_alone_is_sufficient": {
+          "type": "boolean",
+          "const": false
+        },
+        "owner_only_actions": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": {
+            "type": "string",
+            "enum": [
+              "initial-settings-adoption",
+              "active-protection-change",
+              "repository-owner-only-action",
+              "contract-accept"
+            ]
+          }
+        },
+        "ordinary_execution_conditions": {
+          "type": "array",
+          "minItems": 8,
+          "maxItems": 8,
+          "items": {
+            "type": "string",
+            "enum": [
+              "same-fixed-version",
+              "required-verification-passed",
+              "formal-review-satisfied",
+              "valid-operation-approval",
+              "actual-authority",
+              "adopted-route",
+              "approved-side-effects",
+              "no-stop-or-unknown-outcome"
+            ]
+          }
+        },
+        "production_actions": {
+          "type": "array",
+          "minItems": 11,
+          "maxItems": 11,
+          "items": {
+            "type": "string",
+            "enum": [
+              "merge",
+              "publish",
+              "deploy",
+              "external-send",
+              "release",
+              "live-data-write",
+              "permission-change",
+              "sharing-change",
+              "new-connection",
+              "automation-enable",
+              "contract-accept"
+            ]
+          }
+        },
+        "ai_preparation_actions": {
+          "type": "array",
+          "minItems": 6,
+          "maxItems": 6,
+          "items": {
+            "type": "string",
+            "enum": [
+              "read-nonsecret",
+              "edit-candidate",
+              "local-test",
+              "prepare-diff",
+              "prepare-handoff",
+              "authorized-nonpublic-pr"
+            ]
+          }
+        },
+        "permitted_after_owner_action": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "string",
+            "enum": [
+              "nonsecret-readback",
+              "compare-result",
+              "report"
+            ]
+          }
+        },
+        "preparation_with_production_side_effects": {
+          "type": "string",
+          "const": "effect-specific-authorization"
+        },
+        "birds_eye_required": {
+          "type": "boolean",
+          "const": true
+        },
+        "objective_checkpoints": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": {
+            "type": "string",
+            "enum": [
+              "start",
+              "material_change",
+              "before_review",
+              "before_handoff"
+            ]
+          }
+        },
+        "identity_boundary": {
+          "type": "string"
+        },
+        "existing_automation_boundary": {
+          "type": "string"
+        },
+        "formal_review_boundary": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "owner_handoff_contract": {
+      "type": "object",
+      "required": [
+        "required_fields",
+        "readiness_values",
+        "minimum_rule",
+        "decision_actor",
+        "ai_self_score_is_evidence"
+      ],
+      "properties": {
+        "required_fields": {
+          "type": "array",
+          "minItems": 14,
+          "maxItems": 14,
+          "items": {
+            "type": "string",
+            "enum": [
+              "purpose",
+              "before",
+              "after",
+              "changed_and_unchanged",
+              "version",
+              "target_and_audience",
+              "verification",
+              "review",
+              "side_effects",
+              "costs",
+              "restoration",
+              "owner_steps",
+              "open_items",
+              "readiness"
+            ]
+          }
+        },
+        "readiness_values": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "string",
+            "enum": [
+              "ready_for_owner_action",
+              "hold_for_specific_dependency",
+              "not_applicable"
+            ]
+          }
+        },
+        "minimum_rule": {
+          "type": "string"
+        },
+        "decision_actor": {
+          "type": "string",
+          "const": "sugimoto"
+        },
+        "ai_self_score_is_evidence": {
+          "type": "boolean",
+          "const": false
+        }
+      },
+      "additionalProperties": false
     }
   },
   "additionalProperties": false,

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "policy_id": "CIRAS-SUCCESS-20261028-R2.1",
+  "policy_id": "CIRAS-SUCCESS-20261029-R2.2",
   "repository": "Ciras-Inc/line-harness-oss",
   "profile_id": "Ciras-Inc/line-harness-oss",
   "base_commit": "74e11182528e0a2d0ab9896a4ef1337d5a924b31",
