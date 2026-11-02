@@ -1,0 +1,53 @@
+{
+  "purpose": "未記入：今回の目的と受け手",
+  "before": "未記入：現在の状態・対象版・証拠",
+  "after": "未記入：変更後の実物・動作・成果",
+  "changed_and_unchanged": {
+    "changed": [],
+    "unchanged": []
+  },
+  "version": {
+    "repository": null,
+    "pr_number": null,
+    "head_sha": null,
+    "base_sha": null,
+    "artifact_sha256": null
+  },
+  "target_and_audience": {
+    "destination": null,
+    "recipients_or_viewers": []
+  },
+  "verification": {
+    "status": "not_run",
+    "evidence": []
+  },
+  "review": {
+    "status": "not_performed",
+    "adopted_requirements": null,
+    "receipts": []
+  },
+  "side_effects": {
+    "public_preview": null,
+    "deployment": null,
+    "notifications": null,
+    "data_changes": null,
+    "existing_automations": null
+  },
+  "costs": {
+    "additional_spend_cap_jpy": 0,
+    "actual_effect_verified": false
+  },
+  "restoration": {
+    "steps": [],
+    "limits": []
+  },
+  "owner_steps": [],
+  "open_items": [
+    "実案件の根拠で記入する。型の未記入を合格にしない。"
+  ],
+  "readiness": "hold_for_specific_dependency",
+  "execution_actor": "sugimoto",
+  "owner_approval_recorded": false,
+  "production_executed": false,
+  "template_only": true
+}

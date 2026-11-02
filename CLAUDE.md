@@ -1,28 +1,6 @@
-# LINE Harness プロジェクトルール
+# Claude Code 入口
 
-## 概要
-- LINE Official Account CRM管理ツール
-- Worker: https://line-harness.solitary-rain-3867.workers.dev
-- 管理画面: https://harness.ciras.jp（Vercel、Cloudflare Access保護済み）
-- テストBot: @953mvanz（Channel ID: 2009662198）
-- D1 database_id: 214b6b6c-b028-4b10-9fe0-e1b6ecf0c1cc
+@AGENTS.md
 
-## 技術構成
-- API: Cloudflare Workers + Hono（apps/worker）
-- 管理画面: Next.js 15 + React 19（apps/web）
-- データベース: Cloudflare D1（42テーブル）
-- モノレポ: pnpm workspace
-- Vercel Root Directory: apps/web
-- 認証: Authorization: Bearer <API_KEY>
-
-## 絶対禁止
-- 本番Bot（@473hqufe）への操作は絶対禁止。一切触るな
-- 本番Webhook（https://line-richmenu-worker.solitary-rain-3867.workers.dev/webhook）は触るな
-- D1のDELETE/DROP操作はplan modeで確認後のみ
-
-## デプロイ
-- Worker: cd apps/worker && npx wrangler deploy
-- 管理画面: npx vercel build --prod → npx vercel --prod --prebuilt（直接 npx vercel --prod は失敗する）
-
-## 設計判断ログ
-（新しい判断があったら、日付・決定・理由・却下案の形式で自動追記すること）
+共通本文と同版JSON・repo固有補則を読んで作業する。通常業務は依頼範囲で完成させ、通常の公開・merge・送信は、固定版・必要な検証/レビュー・有効な承認・実権限/既存経路・副作用を照合してAIが実行・読戻しまで行う。初期設定・有効な保護の適用とrepo固有の本人専用操作は杉本本人へ引き継ぐ。秘密値を読まず、既存の製品権限・hook・隔離を維持する。
+CLI／Desktop／Cloud／Project内などの実行面で、指示の読込とnative設定の適用は異なる。本文を保存しただけで拒否機構が稼働したとは扱わない。
