@@ -3,8 +3,9 @@ description: Ciras repository instructions and execution-surface guidance
 alwaysApply: true
 ---
 
-# Cursor 固有の入口
+# Ciras 共通方針への入口
 
-共通の作業指示はリポジトリの `AGENTS.md`、規則の詳細は同版の `00_CIRAS_POLICY.json` を参照する。対象ファイルに適用される子ディレクトリの指示も確認する。
-Cursor の参照記法はファイル全文の自動展開を保証しない。作業に必要な規則を読み、Desktop・CLI・Cloudごとの読込・trust・権限を区別する。
-既存の製品権限・hook・隔離を変更または迂回しない。指示文の読込と実際の拒否動作は別に検証する。
+作業前にrootのAGENTS.md、00_CIRAS_POLICY.json、.ciras/repository-context.md、.ciras/ai-profile.jsonと対象配下の指示を読む。参照名を書くだけで全文が自動展開されるとは扱わない。同一版の読取は再利用する。
+AIは目的と全体影響を保ち、依頼内の通常作業・検証を完成する。通常の公開・merge・送信は、固定版・必要な検証/レビュー・有効な承認・実権限/既存経路・副作用が一致した範囲でAIが実行・読戻す。PR/pushの公開preview等も承認範囲に含めて照合する。初期設定・有効な保護の適用とrepo固有の本人専用操作は杉本本人へ引き継ぐ。
+秘密読取・移送、不明ソフトのdownload/install/実行、自己ガード解除、拒否迂回は禁止。既存native権限を変更せず、未確認部分に依存しない安全な通常作業は続ける。
+Editor／CLI／Cloudの設定形式・有効性を分け、指示文の読込を技術的な拒否の証拠にしない。
