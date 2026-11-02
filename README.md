@@ -275,4 +275,10 @@ MIT
 ## AIによる開発
 
 作業前に[AGENTS.md](./AGENTS.md)を確認してください。[AI設定と検証・更新手順](./docs/AI_SETTINGS.md)に、固定版・製品別入口・適用状態の確認方法をまとめています。
+
+AIは依頼内の作成・検証を完成させます。通常の公開・merge・送信は、同一固定版・必要な検証/レビュー・有効承認・実権限/既存経路・副作用が一致した範囲でAIが実行・読戻します。初期設定・有効な保護の適用とrepo固有の本人専用操作は杉本本人が行います。READMEの操作例だけを実行許可とせず、push・PRの公開プレビュー等も承認範囲へ含めて照合します。
 <!-- /CIRAS-AI-SETTINGS -->
+
+### 設定検査器の回帰テスト
+
+repoのルートで `node --test .ciras/tests/verify-ai-settings.test.mjs` を実行する。Node.jsの組込機能と架空fixtureだけを使い、依存導入・通信・実API呼出しは行わない。今回の本人専用・指定主体・公開条件と固定版は [OWNER_LOCAL4_HANDOFF.md](./docs/OWNER_LOCAL4_HANDOFF.md) に記録する。静的成功を正式レビュー・実製品の読込/拒否・本人採用へ読み替えない。
